@@ -1,0 +1,434 @@
+{% extends 'base.html' %}
+
+{% block title %}Consultar con IA - Inventario Inteligente{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold text-primary mb-3">
+                <i class="fas fa-robot me-3"></i>
+                Consulta Inteligente
+            </h1>
+            <p class="lead text-muted">
+                Pregunta a nuestra IA sobre el estado del inventario de forma natural
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-4">
+                    <i class="fas fa-comments me-2"></i>
+                    ¿Qué te gustaría hacer con el inventario?
+                </h5>
+                
+                <div class="mb-4">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">
+                            <i class="fas fa-robot"></i>
+                        </span>
+                        <input type="text" class="form-control" id="queryInput" 
+                               placeholder="Pregunta lo que quieras... ej: '¿cómo estoy?', 'muestra mi inventario', 'quiero añadir algo', 'hola'">
+                    </div>
+                    {% csrf_token %}
+                    <button class="btn btn-primary w-100 py-3" id="consultarBtn">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        Enviar Consulta
+                    </button>
+                </div>
+                
+                <!-- Loading Spinner -->
+                <div class="loading text-center" id="loadingDiv">
+                    <div class="spinner mb-3"></div>
+                    <p class="text-muted">La IA está analizando tu inventario...</p>
+                </div>
+                
+                <!-- AI Response -->
+                <div id="aiResponse" style="display: none;">
+                    <div class="ai-response">
+                        <h5 class="mb-3">
+                            <i class="fas fa-robot me-2"></i>
+                            Respuesta de la IA
+                        </h5>
+                        <div id="responseContent"></div>
+                    </div>
+                </div>
+                
+                <!-- Dynamic Form -->
+                <div id="dynamicForm" style="display: none;">
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-edit me-2"></i>
+                                <span id="formTitle">Completar Información</span>
+                            </h6>
+                            <form id="productForm">
+                                <div id="formFields"></div>
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-success me-2">
+                                        <i class="fas fa-check me-2"></i>Confirmar
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="cancelForm()">
+                                        <i class="fas fa-times me-2"></i>Cancelar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Error Message -->
+                <div id="errorMessage" style="display: none;">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="errorText"></span>
+                    </div>
+                </div>
+                
+                <!-- Examples -->
+                <div class="mt-4">
+                    <h6 class="text-muted mb-3">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        Ejemplos de lo que puedes preguntar:
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-comments text-primary me-2"></i>
+                                    <strong>Conversación:</strong> "¿cómo estás?", "hola", "¿qué tal?"
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-list text-success me-2"></i>
+                                    <strong>Ver inventario:</strong> "muestra todo", "¿qué productos tengo?"
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-eye text-info me-2"></i>
+                                    <strong>Ver producto:</strong> "muestra el teclado", "detalles del mouse"
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-plus text-success me-2"></i>
+                                    <strong>Añadir:</strong> "quiero añadir algo", "añade 5 teclados"
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-trash text-danger me-2"></i>
+                                    <strong>Eliminar:</strong> "elimina el mouse", "quiero borrar algo"
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-question text-warning me-2"></i>
+                                    <strong>Preguntas:</strong> "¿qué es la IA?", "¿cómo funciona esto?"
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ai-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        margin: 15px 0;
+    }
+    
+    .text-purple {
+        color: #6f42c1 !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('consultarBtn');
+    const queryInput = document.getElementById('queryInput');
+    const loadingDiv = document.getElementById('loadingDiv');
+    const aiResponse = document.getElementById('aiResponse');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    function sendQuery() {
+        const query = queryInput.value.trim();
+        
+        if (!query) {
+            alert('Por favor escribe una consulta');
+            return;
+        }
+        
+        // Reset UI
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
+        loadingDiv.style.display = 'block';
+        aiResponse.style.display = 'none';
+        errorMessage.style.display = 'none';
+        
+        // Make AJAX request
+        fetch('{% url "consultar_inventario_ia" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                'query': query
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingDiv.style.display = 'none';
+            
+            if (data.success) {
+                // Verificar el tipo de respuesta
+                console.log('=== RESPUESTA COMPLETA ===');
+                console.log('Respuesta recibida:', data);
+                console.log('Tipo de datos:', data.datos?.tipo);
+                console.log('Acción:', data.accion);
+                
+                
+                if (data.datos && data.datos.tipo === 'formulario') {
+                    showDynamicForm(data.respuesta, data.datos);
+                } else {
+                    // Formatear la respuesta con markdown básico
+                    let formattedResponse = data.respuesta
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+                        .replace(/\n/g, '<br>'); // Line breaks
+                    
+                    document.getElementById('responseContent').innerHTML = formattedResponse;
+                    aiResponse.style.display = 'block';
+                    
+                    // Limpiar el input después de una acción exitosa
+                    if (data.accion && ['eliminar', 'añadir', 'actualizar'].includes(data.accion)) {
+                        queryInput.value = '';
+                    }
+                }
+            } else {
+                document.getElementById('errorText').textContent = data.error;
+                errorMessage.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            loadingDiv.style.display = 'none';
+            document.getElementById('errorText').textContent = 
+                'Error de conexión: ' + error.message;
+            errorMessage.style.display = 'block';
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Enviar Consulta';
+        });
+    }
+    
+    // Event listeners
+    btn.addEventListener('click', sendQuery);
+    
+    // Permitir enviar con Enter
+    queryInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendQuery();
+        }
+    });
+    
+    // Ejemplos de consultas rápidas
+    const examples = [
+        'muestra el inventario',
+        'qué productos están disponibles',
+        'quiero salir',
+        'añade 5 teclados mecánicos',
+        'como funciona esto',
+        'quiero agregar un nuevo mouse',
+        '¿cómo funciona el inventario?'
+    ];
+    
+    // Función para insertar ejemplo en el input
+    function insertExample(example) {
+        queryInput.value = example;
+        queryInput.focus();
+    }
+    
+    // Agregar botones de ejemplos rápidos
+    const examplesContainer = document.createElement('div');
+    examplesContainer.className = 'mt-3';
+    examplesContainer.innerHTML = '<h6 class="text-muted mb-2"><i class="fas fa-bolt me-2"></i>Consultas rápidas:</h6>';
+    
+    const quickButtons = document.createElement('div');
+    quickButtons.className = 'd-flex flex-wrap gap-2';
+    
+    examples.forEach(example => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline-secondary btn-sm';
+        btn.textContent = example;
+        btn.onclick = () => insertExample(example);
+        quickButtons.appendChild(btn);
+    });
+    
+    examplesContainer.appendChild(quickButtons);
+    queryInput.parentNode.parentNode.appendChild(examplesContainer);
+    
+    // Manejar formulario dinámico
+    document.getElementById('productForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitDynamicForm();
+    });
+});
+
+function showDynamicForm(message, formData) {
+    // Mostrar mensaje de la IA
+    let formattedMessage = message
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+    
+    document.getElementById('responseContent').innerHTML = formattedMessage;
+    document.getElementById('aiResponse').style.display = 'block';
+    
+    // Configurar formulario
+    document.getElementById('formTitle').textContent = getFormTitle(formData.accion);
+    buildFormFields(formData.campos);
+    document.getElementById('dynamicForm').style.display = 'block';
+    
+    // Ocultar otros elementos
+    document.getElementById('errorMessage').style.display = 'none';
+}
+
+function getFormTitle(accion) {
+    const titles = {
+        'añadir': 'Agregar Nuevo Producto',
+        'eliminar': 'Eliminar Producto',
+        'actualizar': 'Actualizar Producto'
+    };
+    return titles[accion] || 'Completar Información';
+}
+
+function buildFormFields(campos) {
+    const formFields = document.getElementById('formFields');
+    formFields.innerHTML = '';
+    
+    Object.keys(campos).forEach(key => {
+        const campo = campos[key];
+        const fieldDiv = document.createElement('div');
+        fieldDiv.className = 'mb-3';
+        
+        const label = document.createElement('label');
+        label.className = 'form-label';
+        label.textContent = campo.label;
+        if (campo.requerido) {
+            label.innerHTML += ' <span class="text-danger">*</span>';
+        }
+        
+        let input;
+        if (campo.tipo === 'select') {
+            input = document.createElement('select');
+            input.className = 'form-select';
+            input.name = key;
+            input.required = campo.requerido;
+            
+            // Agregar opción vacía
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = 'Selecciona una opción...';
+            input.appendChild(emptyOption);
+            
+            // Agregar opciones
+            campo.opciones.forEach(opcion => {
+                const option = document.createElement('option');
+                option.value = opcion.valor;
+                option.textContent = opcion.texto;
+                input.appendChild(option);
+            });
+        } else {
+            input = document.createElement('input');
+            input.type = campo.tipo || 'text';
+            input.className = 'form-control';
+            input.name = key;
+            input.value = campo.valor || '';
+            input.placeholder = campo.placeholder || '';
+            input.required = campo.requerido;
+        }
+        
+        fieldDiv.appendChild(label);
+        fieldDiv.appendChild(input);
+        formFields.appendChild(fieldDiv);
+    });
+}
+
+function submitDynamicForm() {
+    const form = document.getElementById('productForm');
+    const formData = new FormData(form);
+    const data = {
+        accion: getCurrentAction(),
+        campos: {}
+    };
+    
+    for (let [key, value] of formData.entries()) {
+        data.campos[key] = value;
+    }
+    
+    // Enviar formulario
+    fetch('{% url "procesar_formulario" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Ocultar formulario
+            document.getElementById('dynamicForm').style.display = 'none';
+            
+            // Mostrar respuesta
+            let formattedResponse = data.respuesta
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+            
+            document.getElementById('responseContent').innerHTML = formattedResponse;
+            document.getElementById('aiResponse').style.display = 'block';
+            
+            // Limpiar input principal
+            document.getElementById('queryInput').value = '';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error de conexión: ' + error.message);
+    });
+}
+
+function cancelForm() {
+    document.getElementById('dynamicForm').style.display = 'none';
+    document.getElementById('aiResponse').style.display = 'none';
+    document.getElementById('queryInput').value = '';
+}
+
+function getCurrentAction() {
+    // Determinar la acción basada en el título del formulario
+    const title = document.getElementById('formTitle').textContent;
+    if (title.includes('Agregar')) return 'añadir';
+    if (title.includes('Eliminar')) return 'eliminar';
+    if (title.includes('Actualizar')) return 'actualizar';
+    return 'añadir';
+}
+
+// Función de imagen eliminada para simplificar el sistema
+</script>
+{% endblock %}

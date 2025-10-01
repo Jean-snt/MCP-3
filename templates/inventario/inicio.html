@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}Inicio - Inventario Inteligente{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-primary mb-3">
+                <i class="fas fa-warehouse me-3"></i>
+                Inventario Inteligente
+            </h1>
+            <p class="lead text-muted">
+                Gestiona tu inventario con la potencia de la Inteligencia Artificial
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-5">
+    <div class="col-md-4">
+        <div class="stats-card text-center">
+            <div class="d-flex align-items-center justify-content-center">
+                <i class="fas fa-boxes fa-2x me-3"></i>
+                <div>
+                    <h3 class="mb-0">{{ total_productos }}</h3>
+                    <p class="mb-0">Total Productos</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card text-center">
+            <div class="d-flex align-items-center justify-content-center">
+                <i class="fas fa-check-circle fa-2x me-3"></i>
+                <div>
+                    <h3 class="mb-0">{{ productos_disponibles }}</h3>
+                    <p class="mb-0">Disponibles</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card text-center">
+            <div class="d-flex align-items-center justify-content-center">
+                <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                <div>
+                    <h3 class="mb-0">{{ productos_agotados }}</h3>
+                    <p class="mb-0">Agotados</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-5">
+    <div class="col-12">
+        <h3 class="mb-4">
+            <i class="fas fa-bolt me-2"></i>
+            Acciones Rápidas
+        </h3>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-robot fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Consultar con IA</h5>
+                <p class="card-text">Pregunta a nuestra IA sobre el estado del inventario de forma natural.</p>
+                <a href="{% url 'consultar_inventario_ia' %}" class="btn btn-primary">
+                    <i class="fas fa-comments me-2"></i>Consultar IA
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-list fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Ver Productos</h5>
+                <p class="card-text">Explora todos los productos en tu inventario con detalles completos.</p>
+                <a href="{% url 'lista_productos' %}" class="btn btn-primary">
+                    <i class="fas fa-eye me-2"></i>Ver Productos
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Products -->
+<div class="row">
+    <div class="col-12">
+        <h3 class="mb-4">
+            <i class="fas fa-clock me-2"></i>
+            Productos Recientes
+        </h3>
+        
+        {% if productos %}
+            <div class="row">
+                {% for producto in productos|slice:":6" %}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="product-card">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="fw-bold mb-0">{{ producto.name }}</h6>
+                            {% if producto.quantity > 0 %}
+                                <span class="badge bg-success quantity-badge">
+                                    {{ producto.quantity }} unidades
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger quantity-badge">
+                                    Agotado
+                                </span>
+                            {% endif %}
+                        </div>
+                        {% if producto.description %}
+                            <p class="text-muted small mb-0">{{ producto.description|truncatechars:80 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% if productos|length > 6 %}
+                <div class="text-center mt-4">
+                    <a href="{% url 'lista_productos' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-plus me-2"></i>Ver Todos los Productos
+                    </a>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                <h5 class="text-muted">No hay productos en el inventario</h5>
+                <p class="text-muted">Comienza agregando algunos productos desde el panel de administración.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+
