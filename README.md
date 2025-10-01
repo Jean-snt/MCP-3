@@ -83,4 +83,5 @@ Interacción con API: requests (para el CLI y Dashboard)
 
 📂 Estructura del Proyecto
 -----------------------------------------
-<pre> ## 📂 Estructura del Proyecto ```plaintext smart_inventory_project/ ├── smart_inventory_project/ # Configuración principal de Django │ ├── settings.py │ ├── urls.py │ └── ... ├── inventory/ # Aplicación Django del inventario │ ├── migrations/ │ ├── admin.py │ ├── models.py # Modelos de Product, Sale, Supplier │ ├── serializers.py # Serializadores para la API REST │ ├── views.py # Vistas de la API RESTful │ ├── urls.py # URLs específicas de la API del inventario │ └── ai_logic.py # Lógica de IA (predicción y sugerencias) ├── populate_db.py # Script para cargar datos de ejemplo ├── consultar_inventario.py # Script CLI para interactuar con el sistema ├── dashboard_app.py # Aplicación web interactiva (Plotly Dash) ├── manage.py └── requirements.txt # Dependencias del proyecto ``` </pre>
+<img width="560" height="424" alt="image" src="https://github.com/user-attachments/assets/9261f789-dbbd-4c24-ac88-04689eff955a" />
+
