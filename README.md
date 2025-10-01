@@ -82,6 +82,7 @@ Visualización / Dashboard: Plotly Dash
 Interacción con API: requests (para el CLI y Dashboard)
 
 📂 Estructura del Proyecto
+-----------------------------------------
 smart_inventory_project/
 ├── smart_inventory_project/      # Configuración principal de Django
 │   ├── settings.py
