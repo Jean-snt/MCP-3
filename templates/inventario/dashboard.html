@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Panel de Control - SmartStock Pro{% endblock %}
+
+{% block content %}
+<!-- Top Bar -->
+<div class="top-bar">
+    <div>
+        <h1 class="page-title mb-2">
+            <i class="fas fa-chart-line me-2"></i>Panel de Control
+        </h1>
+        <p class="text-secondary mb-0">Analítica en tiempo real de tu inventario</p>
+    </div>
+    <div>
+        <button class="btn-modern btn-cyan">
+            <i class="fas fa-download me-2"></i>Exportar Reporte
+        </button>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card">
+            <div class="stats-icon cyan">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="stats-value">{{ total_products }}</div>
+            <div class="stats-label">Total Productos</div>
+            <div class="mt-3">
+                <small style="color: var(--text-secondary);">
+                    <i class="fas fa-info-circle me-1"></i>En catálogo
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card">
+            <div class="stats-icon green">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="stats-value">${{ total_revenue|floatformat:0 }}</div>
+            <div class="stats-label">Ingresos Totales</div>
+            <div class="mt-3">
+                <span class="badge-modern badge-green">
+                    <i class="fas fa-arrow-up me-1"></i>+12%
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card">
+            <div class="stats-icon orange">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stats-value">{{ low_stock_count }}</div>
+            <div class="stats-label">Stock Bajo</div>
+            <div class="mt-3">
+                <span class="badge-modern badge-orange">
+                    <i class="fas fa-warning me-1"></i>Atención
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card">
+            <div class="stats-icon purple">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="stats-value">{{ need_reorder_count }}</div>
+            <div class="stats-label">Reorden Necesario</div>
+            <div class="mt-3">
+                <span class="badge-modern" style="background: rgba(183, 148, 246, 0.2); color: var(--purple);">
+                    <i class="fas fa-sync me-1"></i>Pendiente
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="row g-4 mb-4">
+    <!-- Top Selling Products -->
+    <div class="col-lg-8">
+        <div class="modern-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 style="color: var(--cyan); margin: 0;">
+                    <i class="fas fa-trophy me-2"></i>Top Productos Vendidos
+                </h5>
+                <span class="badge-modern badge-cyan">Últimos 30 días</span>
+            </div>
+            
+            {% if top_selling %}
+                <div class="table-responsive">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Unidades</th>
+                                <th>Ingresos</th>
+                                <th>Tendencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in top_selling %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="stats-icon cyan me-3" style="width: 40px; height: 40px; font-size: 1rem;">
+                                            <i class="fas fa-box"></i>
+                                        </div>
+                                        <strong style="color: var(--text-primary);">{{ item.product__name }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge-modern badge-purple">{{ item.total_sold }} uds</span>
+                                </td>
+                                <td style="color: var(--green); font-weight: 600;">
+                                    ${{ item.total_revenue|floatformat:2 }}
+                                </td>
+                                <td>
+                                    <span class="badge-modern badge-green">
+                                        <i class="fas fa-arrow-up"></i> +8%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-chart-line fa-3x mb-3" style="color: var(--text-secondary);"></i>
+                    <p style="color: var(--text-secondary);">No hay datos de ventas disponibles</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="col-lg-4">
+        <div class="modern-card">
+            <h5 class="mb-4" style="color: var(--orange);">
+                <i class="fas fa-bolt me-2"></i>Acciones Rápidas
+            </h5>
+            <div class="d-grid gap-3">
+                <a href="{% url 'analytics' %}" class="btn-modern btn-cyan">
+                    <i class="fas fa-chart-bar me-2"></i>Ver Análisis
+                </a>
+                <a href="{% url 'predictions' %}" class="btn-modern" style="background: linear-gradient(135deg, var(--purple), #9f7aea); color: white;">
+                    <i class="fas fa-brain me-2"></i>Predicciones
+                </a>
+                <a href="{% url 'train_models' %}" class="btn-modern btn-orange">
+                    <i class="fas fa-cog me-2"></i>Entrenar IA
+                </a>
+                <a href="{% url 'generate_alerts' %}" class="btn-modern" style="background: linear-gradient(135deg, var(--green), #38a169); color: white;">
+                    <i class="fas fa-bell me-2"></i>Generar Alertas
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts and Low Stock -->
+<div class="row g-4">
+    <!-- Low Stock Products -->
+    <div class="col-lg-6">
+        <div class="modern-card">
+            <h5 class="mb-4" style="color: var(--orange);">
+                <i class="fas fa-exclamation-triangle me-2"></i>Productos con Stock Bajo
+            </h5>
+            
+            {% if low_stock_products %}
+                <div class="table-responsive">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Stock</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in low_stock_products %}
+                            <tr>
+                                <td style="color: var(--text-primary);">{{ product.name }}</td>
+                                <td>
+                                    {% if product.quantity == 0 %}
+                                        <span class="badge-modern badge-red">{{ product.quantity }}</span>
+                                    {% else %}
+                                        <span class="badge-modern badge-orange">{{ product.quantity }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if product.stock_status == 'CRITICO' %}
+                                        <span class="badge-modern badge-red">CRÍTICO</span>
+                                    {% else %}
+                                        <span class="badge-modern badge-orange">BAJO</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-check-circle fa-3x mb-3" style="color: var(--green);"></i>
+                    <p style="color: var(--text-secondary);">¡Todos los productos tienen stock suficiente!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Recent Alerts -->
+    <div class="col-lg-6">
+        <div class="modern-card">
+            <h5 class="mb-4" style="color: var(--purple);">
+                <i class="fas fa-bell me-2"></i>Alertas Recientes
+            </h5>
+            
+            {% if recent_alerts %}
+                <div class="table-responsive">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Tipo</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alert in recent_alerts %}
+                            <tr>
+                                <td style="color: var(--text-primary);">{{ alert.product.name }}</td>
+                                <td>
+                                    {% if alert.alert_type == 'LOW_STOCK' %}
+                                        <span class="badge-modern badge-orange">Stock Bajo</span>
+                                    {% elif alert.alert_type == 'OUT_OF_STOCK' %}
+                                        <span class="badge-modern badge-red">Sin Stock</span>
+                                    {% else %}
+                                        <span class="badge-modern badge-cyan">{{ alert.get_alert_type_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'resolve_alert' alert.id %}" class="badge-modern badge-green" style="text-decoration: none;">
+                                        <i class="fas fa-check me-1"></i>Resolver
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-check-circle fa-3x mb-3" style="color: var(--green);"></i>
+                    <p style="color: var(--text-secondary);">No hay alertas activas</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,718 @@
+{% extends 'base.html' %}
+
+{% block title %}Consultar con IA - Inventario Inteligente{% endblock %}
+
+{% block content %}
+<!-- Header con Gradiente -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="ai-header text-center py-5">
+            <div class="robot-icon mb-3">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h1 class="display-4 fw-bold mb-2">Consulta Inteligente</h1>
+            <p class="lead">Pregunta a nuestra IA sobre el estado del inventario de forma natural</p>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Área Principal de Chat -->
+        <div class="chat-container">
+            <div class="card border-0 shadow-lg">
+                <div class="card-body p-4">
+                    <!-- Input de Consulta -->
+                    <div class="query-section mb-4">
+                        <label class="form-label fw-bold mb-3">
+                            <i class="fas fa-message-dots me-2"></i>
+                            ¿Qué te gustaría hacer con el inventario?
+                        </label>
+                        
+                        <div class="input-wrapper mb-3">
+                            <textarea class="form-control query-input" id="queryInput" rows="3"
+                                   placeholder="Escribe tu pregunta aquí... Por ejemplo: '¿Cómo está mi inventario?', 'Muestra productos con stock bajo', 'Añadir nuevo producto'"></textarea>
+                            <div class="input-icon">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                        </div>
+                        
+                        {% csrf_token %}
+                        <button class="btn btn-primary btn-lg w-100 send-btn" id="consultarBtn">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            Enviar Consulta
+                        </button>
+                    </div>
+                    
+                    <!-- Consultas Rápidas -->
+                    <div class="quick-queries mb-4">
+                        <h6 class="text-muted mb-3">
+                            <i class="fas fa-bolt me-2"></i>
+                            Consultas rápidas:
+                        </h6>
+                        <div id="quickButtonsContainer" class="d-flex flex-wrap gap-2"></div>
+                    </div>
+                    
+                    <!-- Loading Spinner -->
+                    <div class="loading-section text-center py-4" id="loadingDiv">
+                        <div class="loading-animation mb-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0">
+                            <i class="fas fa-brain me-2"></i>
+                            La IA está analizando tu inventario...
+                        </p>
+                    </div>
+                    
+                    <!-- AI Response -->
+                    <div id="aiResponse" style="display: none;">
+                        <div class="ai-message">
+                            <div class="message-header mb-3">
+                                <div class="ai-avatar">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <span class="fw-bold ms-2">Asistente IA</span>
+                            </div>
+                            <div class="message-content" id="responseContent"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dynamic Form -->
+                    <div id="dynamicForm" style="display: none;">
+                        <div class="card border-primary mt-3">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-edit me-2"></i>
+                                    <span id="formTitle">Completar Información</span>
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <form id="productForm">
+                                    <div id="formFields"></div>
+                                    <div class="mt-3 d-flex gap-2">
+                                        <button type="submit" class="btn btn-success flex-fill">
+                                            <i class="fas fa-check me-2"></i>Confirmar
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary flex-fill" onclick="cancelForm()">
+                                            <i class="fas fa-times me-2"></i>Cancelar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Error Message -->
+                    <div id="errorMessage" style="display: none;">
+                        <div class="alert alert-danger d-flex align-items-center" role="alert">
+                            <i class="fas fa-exclamation-circle me-3 fs-4"></i>
+                            <div>
+                                <strong>Error:</strong>
+                                <span id="errorText"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección de Ejemplos -->
+        <div class="examples-section mt-4">
+            <div class="card border-0 shadow">
+                <div class="card-body p-4">
+                    <h5 class="mb-4">
+                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                        Ejemplos de lo que puedes preguntar
+                    </h5>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="example-card">
+                                <div class="example-icon bg-primary">
+                                    <i class="fas fa-comments"></i>
+                                </div>
+                                <h6 class="example-title">Conversación</h6>
+                                <p class="example-text">"¿cómo estás?", "hola", "¿qué tal?"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4">
+                            <div class="example-card">
+                                <div class="example-icon bg-success">
+                                    <i class="fas fa-list"></i>
+                                </div>
+                                <h6 class="example-title">Ver inventario</h6>
+                                <p class="example-text">"muestra todo", "¿qué productos tengo?"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4">
+                            <div class="example-card">
+                                <div class="example-icon bg-info">
+                                    <i class="fas fa-eye"></i>
+                                </div>
+                                <h6 class="example-title">Ver producto</h6>
+                                <p class="example-text">"muestra el teclado", "detalles del mouse"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4">
+                            <div class="example-card">
+                                <div class="example-icon bg-success">
+                                    <i class="fas fa-plus"></i>
+                                </div>
+                                <h6 class="example-title">Añadir</h6>
+                                <p class="example-text">"quiero añadir algo", "añade 5 teclados"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4">
+                            <div class="example-card">
+                                <div class="example-icon bg-danger">
+                                    <i class="fas fa-trash"></i>
+                                </div>
+                                <h6 class="example-title">Eliminar</h6>
+                                <p class="example-text">"elimina el mouse", "quiero borrar algo"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4">
+                            <div class="example-card">
+                                <div class="example-icon bg-warning">
+                                    <i class="fas fa-question"></i>
+                                </div>
+                                <h6 class="example-title">Preguntas</h6>
+                                <p class="example-text">"¿qué es la IA?", "¿cómo funciona esto?"</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Header con gradiente */
+    .ai-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        color: white;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .robot-icon {
+        font-size: 4rem;
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+    }
+    
+    /* Container principal */
+    .chat-container {
+        animation: fadeInUp 0.5s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Input de consulta mejorado */
+    .input-wrapper {
+        position: relative;
+    }
+    
+    .query-input {
+        border: 2px solid #e0e0e0;
+        border-radius: 15px;
+        padding: 15px 50px 15px 20px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        resize: none;
+    }
+    
+    .query-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+    }
+    
+    .input-icon {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #667eea;
+        font-size: 1.5rem;
+        pointer-events: none;
+    }
+    
+    /* Botón de enviar */
+    .send-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 12px;
+        padding: 15px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .send-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .send-btn:active {
+        transform: translateY(0);
+    }
+    
+    /* Consultas rápidas */
+    .quick-queries .btn {
+        border-radius: 20px;
+        padding: 8px 16px;
+        font-size: 0.875rem;
+        transition: all 0.3s ease;
+        border: 2px solid #e0e0e0;
+        background: white;
+        color: #555;
+    }
+    
+    .quick-queries .btn:hover {
+        border-color: #667eea;
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* Loading animation */
+    .loading-section {
+        display: none;
+    }
+    
+    .loading-animation .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+    
+    /* Mensaje de la IA */
+    .ai-message {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 15px;
+        padding: 20px;
+        animation: slideIn 0.5s ease-out;
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .ai-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        color: white;
+        font-size: 1.2rem;
+    }
+    
+    .message-content {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        line-height: 1.6;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    /* Tarjetas de ejemplos */
+    .example-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        height: 100%;
+        transition: all 0.3s ease;
+        border: 2px solid #f0f0f0;
+        cursor: pointer;
+    }
+    
+    .example-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        border-color: #667eea;
+    }
+    
+    .example-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+    }
+    
+    .example-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    
+    .example-text {
+        color: #666;
+        font-size: 0.875rem;
+        margin-bottom: 0;
+    }
+    
+    /* Animaciones de entrada */
+    .examples-section {
+        animation: fadeIn 0.8s ease-out;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .robot-icon {
+            font-size: 3rem;
+        }
+        
+        .ai-header h1 {
+            font-size: 2rem;
+        }
+        
+        .example-card {
+            margin-bottom: 15px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('consultarBtn');
+    const queryInput = document.getElementById('queryInput');
+    const loadingDiv = document.getElementById('loadingDiv');
+    const aiResponse = document.getElementById('aiResponse');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    function sendQuery() {
+        const query = queryInput.value.trim();
+        
+        if (!query) {
+            alert('Por favor escribe una consulta');
+            return;
+        }
+        
+        // Reset UI
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando...';
+        loadingDiv.style.display = 'block';
+        aiResponse.style.display = 'none';
+        errorMessage.style.display = 'none';
+        
+        // Make AJAX request
+        fetch('{% url "consultar_inventario_ia" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                'query': query
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingDiv.style.display = 'none';
+            
+            if (data.success) {
+                // Verificar el tipo de respuesta
+                console.log('=== RESPUESTA COMPLETA ===');
+                console.log('Respuesta recibida:', data);
+                console.log('Tipo de datos:', data.datos?.tipo);
+                console.log('Acción:', data.accion);
+                
+                
+                if (data.datos && data.datos.tipo === 'formulario') {
+                    showDynamicForm(data.respuesta, data.datos);
+                } else {
+                    // Asegurar que cualquier formulario anterior desaparezca
+                    document.getElementById('dynamicForm').style.display = 'none';
+                    document.getElementById('formFields').innerHTML = '';
+                    // Formatear la respuesta con markdown básico
+                    let formattedResponse = data.respuesta
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+                        .replace(/\n/g, '<br>'); // Line breaks
+                    
+                    document.getElementById('responseContent').innerHTML = formattedResponse;
+                    aiResponse.style.display = 'block';
+                    
+                    // Limpiar el input después de una acción exitosa
+                    if (data.accion && ['eliminar', 'añadir', 'actualizar', 'registrar_venta'].includes(data.accion)) {
+                        queryInput.value = '';
+                    }
+                }
+            } else {
+                document.getElementById('errorText').textContent = data.error;
+                errorMessage.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            loadingDiv.style.display = 'none';
+            document.getElementById('errorText').textContent = 
+                'Error de conexión: ' + error.message;
+            errorMessage.style.display = 'block';
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Enviar Consulta';
+        });
+    }
+    
+    // Event listeners
+    btn.addEventListener('click', sendQuery);
+    
+    // Permitir enviar con Enter
+    queryInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendQuery();
+        }
+    });
+    
+    // Ejemplos de consultas rápidas
+    const examples = [
+        'muestra el inventario',
+        'qué productos están disponibles',
+        'quiero salir',
+        'añade 5 teclados mecánicos',
+        'como funciona esto',
+        'quiero agregar un nuevo mouse',
+        '¿cómo funciona el inventario?'
+    ];
+    
+    // Función para insertar ejemplo en el input
+    function insertExample(example) {
+        queryInput.value = example;
+        queryInput.focus();
+    }
+    
+    // Agregar botones de ejemplos rápidos al contenedor existente
+    const quickButtonsContainer = document.getElementById('quickButtonsContainer');
+    
+    examples.forEach(example => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline-secondary btn-sm';
+        btn.textContent = example;
+        btn.onclick = () => insertExample(example);
+        quickButtonsContainer.appendChild(btn);
+    });
+    
+    // Manejar formulario dinámico
+    document.getElementById('productForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitDynamicForm();
+    });
+    
+    // Hacer las tarjetas de ejemplos clickeables
+    document.querySelectorAll('.example-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const exampleText = this.querySelector('.example-text').textContent.split('"')[1];
+            if (exampleText) {
+                queryInput.value = exampleText;
+                queryInput.focus();
+                // Scroll suave hacia el input
+                queryInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    });
+});
+
+function showDynamicForm(message, formData) {
+    // Mostrar mensaje de la IA
+    let formattedMessage = message
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+    
+    document.getElementById('responseContent').innerHTML = formattedMessage;
+    document.getElementById('aiResponse').style.display = 'block';
+    
+    // Configurar formulario
+    document.getElementById('formTitle').textContent = getFormTitle(formData.accion);
+    buildFormFields(formData.campos);
+    document.getElementById('dynamicForm').style.display = 'block';
+    
+    // Ocultar otros elementos
+    document.getElementById('errorMessage').style.display = 'none';
+}
+
+function getFormTitle(accion) {
+    const titles = {
+        'añadir': 'Agregar Nuevo Producto',
+        'eliminar': 'Eliminar Producto',
+        'actualizar': 'Actualizar Producto',
+        'predecir': 'Elegir Horizonte de Predicción',
+        'tendencias': 'Elegir Período para el Análisis',
+        'registrar_venta': 'Registrar Venta'
+    };
+    return titles[accion] || 'Completar Información';
+}
+
+function buildFormFields(campos) {
+    const formFields = document.getElementById('formFields');
+    formFields.innerHTML = '';
+    
+    Object.keys(campos).forEach(key => {
+        const campo = campos[key];
+        const fieldDiv = document.createElement('div');
+        fieldDiv.className = 'mb-3';
+        
+        const label = document.createElement('label');
+        label.className = 'form-label';
+        label.textContent = campo.label;
+        if (campo.requerido) {
+            label.innerHTML += ' <span class="text-danger">*</span>';
+        }
+        
+        let input;
+        if (campo.tipo === 'select') {
+            input = document.createElement('select');
+            input.className = 'form-select';
+            input.name = key;
+            input.required = campo.requerido;
+            
+            // Agregar opción vacía
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = 'Selecciona una opción...';
+            input.appendChild(emptyOption);
+            
+            // Agregar opciones
+            campo.opciones.forEach(opcion => {
+                const option = document.createElement('option');
+                option.value = opcion.valor;
+                option.textContent = opcion.texto;
+                input.appendChild(option);
+            });
+        } else {
+            input = document.createElement('input');
+            input.type = campo.tipo || 'text';
+            input.className = 'form-control';
+            input.name = key;
+            input.value = campo.valor || '';
+            input.placeholder = campo.placeholder || '';
+            input.required = campo.requerido;
+        }
+        
+        fieldDiv.appendChild(label);
+        fieldDiv.appendChild(input);
+        formFields.appendChild(fieldDiv);
+    });
+}
+
+function submitDynamicForm() {
+    const form = document.getElementById('productForm');
+    const formData = new FormData(form);
+    const data = {
+        accion: getCurrentAction(),
+        campos: {}
+    };
+    
+    for (let [key, value] of formData.entries()) {
+        data.campos[key] = value;
+    }
+    
+    // Enviar formulario
+    fetch('{% url "procesar_formulario" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+            // Enviar como JSON, pero el backend también soporta form-urlencoded
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Ocultar formulario
+            document.getElementById('dynamicForm').style.display = 'none';
+            document.getElementById('formFields').innerHTML = '';
+            
+            // Mostrar respuesta
+            let formattedResponse = data.respuesta
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+            
+            document.getElementById('responseContent').innerHTML = formattedResponse;
+            document.getElementById('aiResponse').style.display = 'block';
+            
+            // Limpiar input principal
+            document.getElementById('queryInput').value = '';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error de conexión: ' + error.message);
+    });
+}
+
+function cancelForm() {
+    document.getElementById('dynamicForm').style.display = 'none';
+    document.getElementById('aiResponse').style.display = 'none';
+    document.getElementById('queryInput').value = '';
+}
+
+function getCurrentAction() {
+    // Determinar la acción basada en el título del formulario
+    const title = document.getElementById('formTitle').textContent;
+    if (title.includes('Agregar')) return 'añadir';
+    if (title.includes('Eliminar')) return 'eliminar';
+    if (title.includes('Actualizar')) return 'actualizar';
+    if (title.includes('Horizonte')) return 'predecir';
+    if (title.includes('Período')) return 'tendencias';
+    if (title.includes('Registrar Venta')) return 'registrar_venta';
+    return 'predecir';
+}
+
+// Función de imagen eliminada para simplificar el sistema
+</script>
+{% endblock %}

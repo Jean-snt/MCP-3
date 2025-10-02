@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+
+{% block title %}Centro de Comando - SmartStock Pro{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="top-bar">
+    <div>
+        <h1 class="page-title mb-2">
+            <i class="fas fa-cube me-2"></i>Centro de Comando
+        </h1>
+        <p class="text-secondary mb-0">Gestión inteligente con IA en tiempo real</p>
+    </div>
+    <div>
+        <button class="btn-modern btn-cyan">
+            <i class="fas fa-plus me-2"></i>Nuevo Producto
+        </button>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card">
+            <div class="stats-icon cyan">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="stats-value">{{ total_productos }}</div>
+            <div class="stats-label">Total Productos</div>
+            <div class="mt-3">
+                <span class="badge-modern badge-cyan">
+                    <i class="fas fa-arrow-up me-1"></i>Activo
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card">
+            <div class="stats-icon green">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stats-value">{{ productos_disponibles }}</div>
+            <div class="stats-label">En Stock</div>
+            <div class="mt-3">
+                <span class="badge-modern badge-green">
+                    <i class="fas fa-check me-1"></i>Disponible
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card">
+            <div class="stats-icon orange">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stats-value">{{ productos_agotados }}</div>
+            <div class="stats-label">Agotados</div>
+            <div class="mt-3">
+                <span class="badge-modern badge-orange">
+                    <i class="fas fa-sync me-1"></i>Requerido
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <div class="stats-card">
+            <div class="stats-icon purple">
+                <i class="fas fa-brain"></i>
+            </div>
+            <div class="stats-value">IA</div>
+            <div class="stats-label">Predicciones Activas</div>
+            <div class="mt-3">
+                <span class="badge-modern" style="background: rgba(183, 148, 246, 0.2); color: var(--purple);">
+                    <i class="fas fa-robot me-1"></i>Online
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Cards Grid -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="modern-card">
+            <h5 class="mb-4" style="color: var(--cyan);">
+                <i class="fas fa-rocket me-2"></i>Módulos Principales
+            </h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <a href="{% url 'dashboard' %}" style="text-decoration: none;">
+                        <div style="background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 12px; padding: 1.5rem; transition: all 0.3s ease;" 
+                             onmouseover="this.style.background='rgba(0, 212, 255, 0.1)'; this.style.borderColor='var(--cyan)'" 
+                             onmouseout="this.style.background='rgba(0, 212, 255, 0.05)'; this.style.borderColor='rgba(0, 212, 255, 0.2)'">
+                            <i class="fas fa-chart-line fa-2x mb-2" style="color: var(--cyan);"></i>
+                            <h6 style="color: var(--text-primary); margin-bottom: 0.5rem;">Panel de Control</h6>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">Métricas en tiempo real</p>
+                        </div>
+                    </a>
+                </div>
+                
+                <div class="col-md-6">
+                    <a href="{% url 'predictions' %}" style="text-decoration: none;">
+                        <div style="background: rgba(183, 148, 246, 0.05); border: 1px solid rgba(183, 148, 246, 0.2); border-radius: 12px; padding: 1.5rem; transition: all 0.3s ease;" 
+                             onmouseover="this.style.background='rgba(183, 148, 246, 0.1)'; this.style.borderColor='var(--purple)'" 
+                             onmouseout="this.style.background='rgba(183, 148, 246, 0.05)'; this.style.borderColor='rgba(183, 148, 246, 0.2)'">
+                            <i class="fas fa-brain fa-2x mb-2" style="color: var(--purple);"></i>
+                            <h6 style="color: var(--text-primary); margin-bottom: 0.5rem;">Predicciones IA</h6>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">Análisis predictivo avanzado</p>
+                        </div>
+                    </a>
+                </div>
+                
+                <div class="col-md-6">
+                    <a href="{% url 'analytics' %}" style="text-decoration: none;">
+                        <div style="background: rgba(72, 187, 120, 0.05); border: 1px solid rgba(72, 187, 120, 0.2); border-radius: 12px; padding: 1.5rem; transition: all 0.3s ease;" 
+                             onmouseover="this.style.background='rgba(72, 187, 120, 0.1)'; this.style.borderColor='var(--green)'" 
+                             onmouseout="this.style.background='rgba(72, 187, 120, 0.05)'; this.style.borderColor='rgba(72, 187, 120, 0.2)'">
+                            <i class="fas fa-chart-pie fa-2x mb-2" style="color: var(--green);"></i>
+                            <h6 style="color: var(--text-primary); margin-bottom: 0.5rem;">Analíticas</h6>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">Tendencias y patrones</p>
+                        </div>
+                    </a>
+                </div>
+                
+                <div class="col-md-6">
+                    <a href="{% url 'consultar_inventario_ia' %}" style="text-decoration: none;">
+                        <div style="background: rgba(255, 107, 53, 0.05); border: 1px solid rgba(255, 107, 53, 0.2); border-radius: 12px; padding: 1.5rem; transition: all 0.3s ease;" 
+                             onmouseover="this.style.background='rgba(255, 107, 53, 0.1)'; this.style.borderColor='var(--orange)'" 
+                             onmouseout="this.style.background='rgba(255, 107, 53, 0.05)'; this.style.borderColor='rgba(255, 107, 53, 0.2)'">
+                            <i class="fas fa-comments fa-2x mb-2" style="color: var(--orange);"></i>
+                            <h6 style="color: var(--text-primary); margin-bottom: 0.5rem;">Asistente IA</h6>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">Consultas en lenguaje natural</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="modern-card">
+            <h5 class="mb-4" style="color: var(--orange);">
+                <i class="fas fa-zap me-2"></i>Accesos Rápidos
+            </h5>
+            <div class="d-grid gap-3">
+                <a href="{% url 'lista_productos' %}" class="btn-modern btn-cyan text-center" style="text-decoration: none;">
+                    <i class="fas fa-boxes me-2"></i>Ver Catálogo
+                </a>
+                <a href="{% url 'alerts' %}" class="btn-modern btn-orange text-center" style="text-decoration: none;">
+                    <i class="fas fa-bell me-2"></i>Ver Alertas
+                </a>
+                <button class="btn-modern" style="background: linear-gradient(135deg, var(--purple), #9f7aea); color: white;">
+                    <i class="fas fa-cog me-2"></i>Configuración
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Products Section -->
+<div class="modern-card">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 style="color: var(--cyan); margin: 0;">
+            <i class="fas fa-box-open me-2"></i>Productos Recientes
+        </h5>
+        <a href="{% url 'lista_productos' %}" class="badge-modern badge-cyan" style="text-decoration: none;">
+            Ver Todo <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+    </div>
+    
+    {% if productos %}
+        <div class="row g-3">
+            {% for producto in productos|slice:":6" %}
+            <div class="col-lg-4 col-md-6">
+                <div style="background: rgba(26, 31, 46, 0.5); border: 1px solid var(--dark-border); border-radius: 12px; padding: 1.5rem; transition: all 0.3s ease;"
+                     onmouseover="this.style.borderColor='var(--cyan)'; this.style.transform='translateY(-4px)'"
+                     onmouseout="this.style.borderColor='var(--dark-border)'; this.style.transform='translateY(0)'">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 style="color: var(--text-primary); margin: 0; flex: 1;">{{ producto.name }}</h6>
+                        {% if producto.quantity > 0 %}
+                            <span class="badge-modern badge-green">{{ producto.quantity }}</span>
+                        {% else %}
+                            <span class="badge-modern badge-red">0</span>
+                        {% endif %}
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge-modern badge-cyan">
+                            <i class="fas fa-dollar-sign me-1"></i>{{ producto.selling_price|floatformat:2 }}
+                        </span>
+                    </div>
+                    {% if producto.description %}
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">{{ producto.description|truncatechars:60 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-box-open fa-4x mb-3" style="color: var(--text-secondary);"></i>
+            <h5 style="color: var(--text-secondary);">No hay productos en el inventario</h5>
+            <p style="color: var(--text-secondary);">Comienza agregando productos para empezar a gestionar tu inventario.</p>
+            <button class="btn-modern btn-cyan mt-3">
+                <i class="fas fa-plus me-2"></i>Agregar Primer Producto
+            </button>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

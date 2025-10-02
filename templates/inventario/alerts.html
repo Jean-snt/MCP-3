@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Alertas de Inventario - Inventario Inteligente{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-bell text-warning me-2"></i>
+                Sistema de Alertas de Inventario
+            </h1>
+        </div>
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bolt me-2"></i>
+                        Acciones Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'generate_alerts' %}" class="btn btn-warning w-100">
+                                <i class="fas fa-sync-alt me-2"></i>Generar Alertas
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'predictions' %}" class="btn btn-info w-100">
+                                <i class="fas fa-crystal-ball me-2"></i>Ver Predicciones
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'dashboard' %}" class="btn btn-primary w-100">
+                                <i class="fas fa-chart-line me-2"></i>Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-filter me-2"></i>
+                        Filtros
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="type" class="form-label">Tipo de Alerta</label>
+                            <select name="type" id="type" class="form-select">
+                                <option value="">Todos los tipos</option>
+                                {% for value, label in alert_types %}
+                                    <option value="{{ value }}" {% if request.GET.type == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="resolved" class="form-label">Estado</label>
+                            <select name="resolved" id="resolved" class="form-select">
+                                <option value="">Todos los estados</option>
+                                <option value="false" {% if request.GET.resolved == "false" %}selected{% endif %}>
+                                    Activas
+                                </option>
+                                <option value="true" {% if request.GET.resolved == "true" %}selected{% endif %}>
+                                    Resueltas
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-2"></i>Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de alertas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Alertas ({{ alerts.count }} total)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if alerts %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Producto</th>
+                                        <th>Tipo</th>
+                                        <th>Mensaje</th>
+                                        <th>Estado</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for alert in alerts %}
+                                    <tr class="{% if not alert.is_resolved %}table-warning{% endif %}">
+                                        <td>{{ alert.id }}</td>
+                                        <td>
+                                            <strong>{{ alert.product.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">SKU: {{ alert.product.sku }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if alert.alert_type == 'LOW_STOCK' %}warning{% elif alert.alert_type == 'OUT_OF_STOCK' %}danger{% elif alert.alert_type == 'HIGH_STOCK' %}info{% else %}secondary{% endif %}">
+                                                {{ alert.get_alert_type_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ alert.message }}</td>
+                                        <td>
+                                            {% if alert.is_resolved %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check"></i> Resuelta
+                                                </span>
+                                                {% if alert.resolved_at %}
+                                                    <br>
+                                                    <small class="text-muted">{{ alert.resolved_at|date:"d/m/Y H:i" }}</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-exclamation-triangle"></i> Activa
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ alert.created_at|date:"d/m/Y" }}
+                                            <br>
+                                            <small class="text-muted">{{ alert.created_at|time:"H:i" }}</small>
+                                        </td>
+                                        <td>
+                                            {% if not alert.is_resolved %}
+                                                <a href="{% url 'resolve_alert' alert.id %}" 
+                                                   class="btn btn-sm btn-success"
+                                                   onclick="return confirm('¿Marcar esta alerta como resuelta?')">
+                                                    <i class="fas fa-check"></i> Resolver
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">Resuelta</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                            <h5 class="text-success">No hay alertas</h5>
+                            <p class="text-muted">No se encontraron alertas con los filtros aplicados.</p>
+                            <a href="{% url 'generate_alerts' %}" class="btn btn-primary">
+                                <i class="fas fa-sync-alt me-2"></i>Generar Alertas
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información adicional -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Información del Sistema de Alertas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-exclamation-triangle text-warning me-2"></i>Tipos de Alertas</h6>
+                            <ul class="list-unstyled">
+                                <li><span class="badge bg-warning me-2">Stock Bajo</span> Productos con stock por debajo del mínimo</li>
+                                <li><span class="badge bg-danger me-2">Sin Stock</span> Productos completamente agotados</li>
+                                <li><span class="badge bg-info me-2">Stock Alto</span> Productos con stock por encima del máximo</li>
+                                <li><span class="badge bg-secondary me-2">Reorden</span> Sugerencias de reabastecimiento</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-cog text-primary me-2"></i>Funcionalidades</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Generación automática de alertas</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Filtrado por tipo y estado</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Resolución manual de alertas</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Integración con predicciones IA</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+

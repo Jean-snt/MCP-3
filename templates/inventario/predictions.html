@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Predicciones de Demanda - Inventario Inteligente{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-crystal-ball text-primary me-2"></i>
+                Predicciones de Demanda con IA
+            </h1>
+        </div>
+    </div>
+
+    <!-- Información general -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Análisis Inteligente:</strong> 
+                Se han analizado {{ total_products }} productos y {{ products_needing_reorder }} necesitan reabastecimiento.
+                Última actualización: {{ predictions.0.analysis_date|date:"d/m/Y H:i" }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de predicciones -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-line text-success me-2"></i>
+                        Predicciones de Demanda y Sugerencias de Reabastecimiento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if predictions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Stock Actual</th>
+                                        <th>Demanda 7 días</th>
+                                        <th>Demanda 30 días</th>
+                                        <th>Días de Suministro</th>
+                                        <th>Necesita Reorden</th>
+                                        <th>Cantidad Sugerida</th>
+                                        <th>Confianza</th>
+                                        <th>Razón</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pred in predictions %}
+                                    <tr class="{% if pred.needs_reorder %}table-warning{% endif %}">
+                                        <td>
+                                            <strong>{{ pred.product_name }}</strong>
+                                            {% if pred.needs_reorder %}
+                                                <i class="fas fa-exclamation-triangle text-warning ms-1"></i>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if pred.current_stock <= 5 %}danger{% elif pred.current_stock <= 15 %}warning{% else %}success{% endif %}">
+                                                {{ pred.current_stock }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ pred.predicted_demand_7d|floatformat:1 }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ pred.predicted_demand_30d|floatformat:1 }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if pred.days_of_supply < 7 %}danger{% elif pred.days_of_supply < 15 %}warning{% else %}success{% endif %}">
+                                                {{ pred.days_of_supply|floatformat:1 }} días
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if pred.needs_reorder %}
+                                                <span class="badge bg-danger">SÍ</span>
+                                            {% else %}
+                                                <span class="badge bg-success">NO</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if pred.suggested_quantity > 0 %}
+                                                <span class="badge bg-warning">{{ pred.suggested_quantity }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if pred.confidence == 'high' %}success{% elif pred.confidence == 'medium' %}warning{% else %}secondary{% endif %}">
+                                                {{ pred.confidence|title }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ pred.reason }}</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No hay predicciones disponibles. 
+                            <a href="{% url 'train_models' %}" class="alert-link">Entrena los modelos de IA</a> 
+                            para obtener predicciones de demanda.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen de recomendaciones -->
+    {% if predictions %}
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Productos Críticos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for pred in predictions %}
+                        {% if pred.needs_reorder and pred.days_of_supply < 7 %}
+                        <div class="alert alert-danger mb-2">
+                            <strong>{{ pred.product_name }}</strong><br>
+                            <small>
+                                Solo {{ pred.days_of_supply|floatformat:1 }} días de suministro restantes.
+                                Se sugiere ordenar {{ pred.suggested_quantity }} unidades.
+                            </small>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock me-2"></i>
+                        Productos a Monitorear
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for pred in predictions %}
+                        {% if pred.needs_reorder and pred.days_of_supply >= 7 %}
+                        <div class="alert alert-warning mb-2">
+                            <strong>{{ pred.product_name }}</strong><br>
+                            <small>
+                                {{ pred.days_of_supply|floatformat:1 }} días de suministro.
+                                Considerar reordenar {{ pred.suggested_quantity }} unidades.
+                            </small>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Acciones -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cogs me-2"></i>
+                        Acciones
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'train_models' %}" class="btn btn-primary w-100">
+                                <i class="fas fa-brain me-2"></i>Entrenar Modelos
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'analytics' %}" class="btn btn-info w-100">
+                                <i class="fas fa-chart-bar me-2"></i>Ver Análisis
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'dashboard' %}" class="btn btn-secondary w-100">
+                                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button onclick="location.reload()" class="btn btn-success w-100">
+                                <i class="fas fa-sync-alt me-2"></i>Actualizar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

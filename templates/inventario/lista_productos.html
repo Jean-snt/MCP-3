@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+
+{% block title %}Lista de Productos - Inventario Inteligente{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold text-primary mb-3">
+                <i class="fas fa-boxes me-3"></i>
+                Lista de Productos
+            </h1>
+            <p class="lead text-muted">
+                Explora todos los productos en tu inventario
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Filter and Search -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="form-control" id="searchInput" placeholder="Buscar productos...">
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="filter" id="all" autocomplete="off" checked>
+            <label class="btn btn-outline-primary" for="all">
+                <i class="fas fa-list me-1"></i>Todos
+            </label>
+            
+            <input type="radio" class="btn-check" name="filter" id="available" autocomplete="off">
+            <label class="btn btn-outline-success" for="available">
+                <i class="fas fa-check-circle me-1"></i>Disponibles
+            </label>
+            
+            <input type="radio" class="btn-check" name="filter" id="outOfStock" autocomplete="off">
+            <label class="btn btn-outline-danger" for="outOfStock">
+                <i class="fas fa-exclamation-triangle me-1"></i>Agotados
+            </label>
+        </div>
+    </div>
+</div>
+
+<!-- Products Grid -->
+<div class="row" id="productsContainer">
+    {% if productos %}
+        {% for producto in productos %}
+        <div class="col-lg-4 col-md-6 mb-4 product-item" 
+             data-name="{{ producto.name|lower }}" 
+             data-description="{{ producto.description|lower }}"
+             data-quantity="{{ producto.quantity }}">
+            <div class="card h-100 product-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title mb-0">{{ producto.name }}</h5>
+                        {% if producto.quantity > 0 %}
+                            <span class="badge bg-success quantity-badge">
+                                {{ producto.quantity }} unidades
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger quantity-badge">
+                                <i class="fas fa-times me-1"></i>Agotado
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-2">
+                        <span class="badge bg-primary"><i class="fas fa-tag me-1"></i> ${{ producto.selling_price|floatformat:2 }}</span>
+                    </div>
+
+                    {% if producto.description %}
+                        <p class="card-text text-muted">{{ producto.description }}</p>
+                    {% else %}
+                        <p class="card-text text-muted fst-italic">Sin descripción</p>
+                    {% endif %}
+                    
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="stock-indicator">
+                                {% if producto.quantity > 10 %}
+                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                    <small class="text-success">Stock Alto</small>
+                                {% elif producto.quantity > 0 %}
+                                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                    <small class="text-warning">Stock Bajo</small>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-danger me-1"></i>
+                                    <small class="text-danger">Sin Stock</small>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="product-actions">
+                                {% if producto.quantity > 0 %}
+                                    <span class="badge bg-primary">ID: {{ producto.id }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">No hay productos en el inventario</h4>
+                <p class="text-muted">Comienza agregando algunos productos desde el panel de administración.</p>
+                <a href="/admin/" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Agregar Productos
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Empty State for Filtered Results -->
+<div class="row" id="emptyState" style="display: none;">
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="fas fa-search fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">No se encontraron productos</h4>
+            <p class="text-muted">Intenta ajustar tu búsqueda o filtros.</p>
+            <button class="btn btn-outline-primary" onclick="clearFilters()">
+                <i class="fas fa-refresh me-2"></i>Limpiar Filtros
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Back to Home -->
+<div class="row mt-5">
+    <div class="col-12 text-center">
+        <a href="{% url 'inicio' %}" class="btn btn-outline-primary">
+            <i class="fas fa-home me-2"></i>Volver al Inicio
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const filterRadios = document.querySelectorAll('input[name="filter"]');
+    const productsContainer = document.getElementById('productsContainer');
+    const emptyState = document.getElementById('emptyState');
+    
+    function filterProducts() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedFilter = document.querySelector('input[name="filter"]:checked').id;
+        const productItems = document.querySelectorAll('.product-item');
+        let visibleCount = 0;
+        
+        productItems.forEach(item => {
+            const name = item.dataset.name;
+            const description = item.dataset.description;
+            const quantity = parseInt(item.dataset.quantity);
+            
+            let matchesSearch = name.includes(searchTerm) || description.includes(searchTerm);
+            let matchesFilter = true;
+            
+            switch(selectedFilter) {
+                case 'available':
+                    matchesFilter = quantity > 0;
+                    break;
+                case 'outOfStock':
+                    matchesFilter = quantity === 0;
+                    break;
+                default:
+                    matchesFilter = true;
+            }
+            
+            if (matchesSearch && matchesFilter) {
+                item.style.display = 'block';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        // Show/hide empty state
+        if (visibleCount === 0) {
+            productsContainer.style.display = 'none';
+            emptyState.style.display = 'block';
+        } else {
+            productsContainer.style.display = 'block';
+            emptyState.style.display = 'none';
+        }
+    }
+    
+    // Event listeners
+    searchInput.addEventListener('input', filterProducts);
+    filterRadios.forEach(radio => {
+        radio.addEventListener('change', filterProducts);
+    });
+});
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('all').checked = true;
+    document.querySelectorAll('.product-item').forEach(item => {
+        item.style.display = 'block';
+    });
+    document.getElementById('productsContainer').style.display = 'block';
+    document.getElementById('emptyState').style.display = 'none';
+}
+</script>
+{% endblock %}
+
+
