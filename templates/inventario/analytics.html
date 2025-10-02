@@ -1,0 +1,346 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Análisis de Tendencias - Inventario Inteligente{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-chart-bar text-primary me-2"></i>
+                Análisis de Tendencias y Estadísticas
+            </h1>
+        </div>
+    </div>
+
+    <!-- Información general -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Análisis del período:</strong> 
+                Últimos {{ trends.period_days }} días. 
+                Fecha de análisis: {{ trends.analysis_date|date:"d/m/Y H:i" }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Métricas principales -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ trends.total_products }}</h4>
+                            <p class="card-text">Total Productos</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-boxes fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">${{ trends.total_revenue|floatformat:2 }}</h4>
+                            <p class="card-text">Ingresos Totales</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-dollar-sign fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ trends.products_needing_reorder }}</h4>
+                            <p class="card-text">Necesitan Reorden</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-shopping-cart fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ trends.low_stock_products|length }}</h4>
+                            <p class="card-text">Stock Bajo</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top productos vendidos -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-trophy text-warning me-2"></i>
+                        Top Productos Vendidos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if trends.top_selling_products %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Unidades Vendidas</th>
+                                        <th>Ingresos</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in trends.top_selling_products %}
+                                    <tr>
+                                        <td>{{ item.product__name }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ item.total_sold }}</span>
+                                        </td>
+                                        <td>${{ item.total_revenue|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay datos de ventas disponibles.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Productos por categoría -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-layer-group text-info me-2"></i>
+                        Productos por Categoría
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if products_by_category %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Categoría</th>
+                                        <th>Cantidad</th>
+                                        <th>Stock Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in products_by_category %}
+                                    <tr>
+                                        <td>{{ item.category__name }}</td>
+                                        <td>
+                                            <span class="badge bg-info">{{ item.count }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if item.total_stock > 0 %}success{% else %}danger{% endif %}">
+                                                {{ item.total_stock }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay categorías disponibles.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ventas por mes -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-line text-success me-2"></i>
+                        Ventas por Mes (Últimos 6 meses)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if sales_by_month %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Mes</th>
+                                        <th>Ventas Totales</th>
+                                        <th>Ingresos</th>
+                                        <th>Tendencia</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in sales_by_month %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.month }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ item.total_sales }}</span>
+                                        </td>
+                                        <td>${{ item.total_revenue|floatformat:2 }}</td>
+                                        <td>
+                                            {% if forloop.first %}
+                                                <span class="badge bg-secondary">Baseline</span>
+                                            {% else %}
+                                                {% if item.total_sales > sales_by_month.0.total_sales %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-arrow-up"></i> +{{ item.total_sales|add:"-"|add:sales_by_month.0.total_sales }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-arrow-down"></i> {{ item.total_sales|add:"-"|add:sales_by_month.0.total_sales }}
+                                                    </span>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No hay datos de ventas por mes disponibles.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Productos con stock bajo -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                        Productos con Stock Bajo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if trends.low_stock_products %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Stock Actual</th>
+                                        <th>Stock Mínimo</th>
+                                        <th>Déficit</th>
+                                        <th>Prioridad</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for product in trends.low_stock_products %}
+                                    <tr>
+                                        <td>{{ product.name }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if product.quantity <= 0 %}danger{% else %}warning{% endif %}">
+                                                {{ product.quantity }}
+                                            </span>
+                                        </td>
+                                        <td>{{ product.min_stock_level }}</td>
+                                        <td>
+                                            <span class="badge bg-danger">
+                                                {{ product.min_stock_level|add:"-"|add:product.quantity }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if product.quantity <= 0 %}
+                                                <span class="badge bg-danger">CRÍTICO</span>
+                                            {% elif product.quantity <= product.min_stock_level %}
+                                                <span class="badge bg-warning">ALTO</span>
+                                            {% else %}
+                                                <span class="badge bg-info">MEDIO</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            ¡Todos los productos tienen stock suficiente!
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cogs me-2"></i>
+                        Acciones
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'predictions' %}" class="btn btn-primary w-100">
+                                <i class="fas fa-crystal-ball me-2"></i>Ver Predicciones
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'dashboard' %}" class="btn btn-info w-100">
+                                <i class="fas fa-chart-line me-2"></i>Dashboard
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'alerts' %}" class="btn btn-warning w-100">
+                                <i class="fas fa-bell me-2"></i>Ver Alertas
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button onclick="location.reload()" class="btn btn-success w-100">
+                                <i class="fas fa-sync-alt me-2"></i>Actualizar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+

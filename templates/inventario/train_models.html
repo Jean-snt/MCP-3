@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Entrenar Modelos de IA - Inventario Inteligente{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-brain text-primary me-2"></i>
+                Entrenar Modelos de Machine Learning
+            </h1>
+        </div>
+    </div>
+
+    <!-- Información -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>¿Qué hace el entrenamiento?</strong> 
+                Los modelos de Machine Learning analizan el historial de ventas para predecir la demanda futura de cada producto.
+                Esto permite generar sugerencias inteligentes de reabastecimiento.
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón de entrenamiento -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-play me-2"></i>
+                        Entrenar Modelos
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="card-text mb-4">
+                        Haz clic en el botón para entrenar todos los modelos de Machine Learning con los datos históricos disponibles.
+                    </p>
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-lg" 
+                                onclick="return confirm('¿Entrenar todos los modelos? Esto puede tomar unos minutos.')">
+                            <i class="fas fa-brain me-2"></i>Entrenar Modelos
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado de los modelos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Estado de los Modelos por Producto
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if model_status %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Modelo Entrenado</th>
+                                        <th>Predicción 7 días</th>
+                                        <th>Predicción 30 días</th>
+                                        <th>Sugerencia Reorden</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in model_status %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.product.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">SKU: {{ item.product.sku }}</small>
+                                        </td>
+                                        <td>
+                                            {% if item.has_model %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check"></i> Entrenado
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-clock"></i> Pendiente
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.has_model %}
+                                                <span class="badge bg-info">{{ item.predicted_demand_7d|floatformat:1 }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.has_model %}
+                                                <span class="badge bg-primary">{{ item.predicted_demand_30d|floatformat:1 }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.reorder_suggestion %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-exclamation-triangle"></i> Sí
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check"></i> No
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-robot fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay productos disponibles</h5>
+                            <p class="text-muted">Agrega algunos productos al inventario para poder entrenar modelos.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información técnica -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cogs me-2"></i>
+                        Información Técnica
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-chart-line text-primary me-2"></i>Algoritmos Utilizados</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Regresión Lineal (Scikit-learn)</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Análisis de Series Temporales</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Promedios Móviles</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Características Temporales</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-database text-info me-2"></i>Datos Utilizados</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Historial de ventas (90 días)</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Patrones estacionales</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Tendencias de demanda</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Días de la semana/mes</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bolt me-2"></i>
+                        Acciones
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'predictions' %}" class="btn btn-info w-100">
+                                <i class="fas fa-crystal-ball me-2"></i>Ver Predicciones
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'analytics' %}" class="btn btn-success w-100">
+                                <i class="fas fa-chart-bar me-2"></i>Ver Análisis
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'dashboard' %}" class="btn btn-primary w-100">
+                                <i class="fas fa-chart-line me-2"></i>Dashboard
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button onclick="location.reload()" class="btn btn-secondary w-100">
+                                <i class="fas fa-sync-alt me-2"></i>Actualizar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+

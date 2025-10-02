@@ -203,6 +203,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.datos && data.datos.tipo === 'formulario') {
                     showDynamicForm(data.respuesta, data.datos);
                 } else {
+                    // Asegurar que cualquier formulario anterior desaparezca
+                    document.getElementById('dynamicForm').style.display = 'none';
+                    document.getElementById('formFields').innerHTML = '';
                     // Formatear la respuesta con markdown básico
                     let formattedResponse = data.respuesta
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
@@ -213,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     aiResponse.style.display = 'block';
                     
                     // Limpiar el input después de una acción exitosa
-                    if (data.accion && ['eliminar', 'añadir', 'actualizar'].includes(data.accion)) {
+                    if (data.accion && ['eliminar', 'añadir', 'actualizar', 'registrar_venta'].includes(data.accion)) {
                         queryInput.value = '';
                     }
                 }
@@ -310,7 +313,10 @@ function getFormTitle(accion) {
     const titles = {
         'añadir': 'Agregar Nuevo Producto',
         'eliminar': 'Eliminar Producto',
-        'actualizar': 'Actualizar Producto'
+        'actualizar': 'Actualizar Producto',
+        'predecir': 'Elegir Horizonte de Predicción',
+        'tendencias': 'Elegir Período para el Análisis',
+        'registrar_venta': 'Registrar Venta'
     };
     return titles[accion] || 'Completar Información';
 }
@@ -384,6 +390,7 @@ function submitDynamicForm() {
         method: 'POST',
         headers: {
             'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+            // Enviar como JSON, pero el backend también soporta form-urlencoded
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(data)
@@ -393,6 +400,7 @@ function submitDynamicForm() {
         if (data.success) {
             // Ocultar formulario
             document.getElementById('dynamicForm').style.display = 'none';
+            document.getElementById('formFields').innerHTML = '';
             
             // Mostrar respuesta
             let formattedResponse = data.respuesta
@@ -426,7 +434,10 @@ function getCurrentAction() {
     if (title.includes('Agregar')) return 'añadir';
     if (title.includes('Eliminar')) return 'eliminar';
     if (title.includes('Actualizar')) return 'actualizar';
-    return 'añadir';
+    if (title.includes('Horizonte')) return 'predecir';
+    if (title.includes('Período')) return 'tendencias';
+    if (title.includes('Registrar Venta')) return 'registrar_venta';
+    return 'predecir';
 }
 
 // Función de imagen eliminada para simplificar el sistema

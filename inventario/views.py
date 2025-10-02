@@ -1,25 +1,77 @@
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from uuid import uuid4
 from django.http import JsonResponse
 from .models import Product
-import vertexai
-from vertexai.generative_models import GenerativeModel
 import os
 import json
+from .ml_services import DemandPredictionService, ReorderSuggestionService, TrendAnalysisService
+
+# Carga perezosa de Vertex AI (si está instalado y configurado)
+def _maybe_load_vertex():
+    try:
+        import vertexai
+        from vertexai.generative_models import GenerativeModel
+        return vertexai, GenerativeModel
+    except Exception:
+        return None, None
 
 # Create your views here.
+def _generate_unique_sku():
+    """Genera un SKU único estilo SKU-XXXXXXXX."""
+    from inventario.models import Product
+    for _ in range(5):
+        candidate = f"SKU-{uuid4().hex[:8].upper()}"
+        if not Product.objects.filter(sku=candidate).exists():
+            return candidate
+    # Fallback con más entropía
+    return f"SKU-{uuid4().hex[:12].upper()}"
+
 
 def detectar_accion_simple(user_query):
     """Detección inteligente de acciones cuando Vertex AI falla"""
     query = user_query.lower().strip()
+    # Tokens por palabra para evitar falsos positivos por subcadenas (p.ej. "inventario" contiene "venta")
+    tokens = set(
+        [t for t in query.replace(',', ' ').replace('.', ' ').replace('\n', ' ').split() if t]
+    )
     
     # Detectar salir
     if any(word in query for word in ['salir', 'exit', 'quit', 'cerrar', 'terminar', 'adios', 'adiós', 'chao', 'bye', 'hasta luego', 'nos vemos', 'hasta la vista']):
         return {"action": "salir", "name": None, "quantity": None, "description": None, "id": None}
     
+    # Listar inventario (sinónimos empresariales)
+    elif (
+        'inventario' in tokens
+        or any(word in query for word in [
+            'muestra el inventario','mostrar inventario','ver inventario','lista productos','listar productos',
+            'que productos','qué productos','ver mis productos','ver stock','reporte de inventario','consulta de inventario'
+        ])
+        or 'listar' in tokens
+    ):
+        return {"action": "listar", "name": None, "quantity": None, "description": None, "id": None}
+    
     # Detectar eliminar
     elif any(word in query for word in ['eliminar', 'borrar', 'quitar', 'delete', 'elimina', 'borra', 'quita', 'sacar', 'retirar']):
         return {"action": "eliminar", "name": None, "quantity": None, "description": None, "id": None}
     
+    # Detectar predicción de demanda (antes que añadir para evitar falsos positivos por "quiero")
+    elif any(word in query for word in ['predecir', 'prediccion', 'predicción', 'predice', 'pronostico', 'pronóstico','forecast']):
+        return {"action": "predecir", "name": None, "quantity": None, "description": None, "id": None}
+
+    # Detectar tendencias/análisis (antes que añadir para evitar falso positivo por "quiero")
+    elif any(word in query for word in ['tendencia', 'tendencias', 'analisis', 'análisis', 'patrones', 'analizar', 'reporte', 'resumen','kpi','indicadores']):
+        return {"action": "tendencias", "name": None, "quantity": None, "description": None, "id": None}
+
+    # Registrar venta (evitar match de subcadenas como "inventario")
+    elif (
+        'venta' in tokens
+        or 'vender' in tokens
+        or 'registrar' in tokens and 'venta' in tokens
+        or 'facturar' in tokens
+    ):
+        return {"action": "registrar_venta", "name": None, "quantity": None, "description": None, "id": None}
+
     # Detectar añadir (más flexible)
     elif any(word in query for word in ['añadir', 'agregar', 'crear', 'nuevo', 'quiero', 'necesito', 'agregue', 'añada', 'inscribir', 'registrar', 'meter']):
         return {"action": "añadir", "name": None, "quantity": None, "description": None, "id": None}
@@ -28,14 +80,13 @@ def detectar_accion_simple(user_query):
     elif any(word in query for word in ['actualizar', 'cambiar', 'modificar', 'editar', 'update', 'cambio', 'ajustar', 'revisar']):
         return {"action": "actualizar", "name": None, "quantity": None, "description": None, "id": None}
     
-    # Detectar mostrar producto específico
-    elif any(word in query for word in ['mostrar', 'muestra', 'ver', 'detalles', 'producto', 'dime sobre', 'información de', 'datos de', 'características']):
-        return {"action": "mostrar_producto", "name": None, "quantity": None, "description": None, "id": None}
+    # Detectar sugerencias de reabastecimiento
+    elif any(word in query for word in ['reabaste', 'reabastecimiento', 'reorden', 'reordenar', 'sugerencia', 'sugerir']):
+        return {"action": "sugerir_reabastecimiento", "name": None, "quantity": None, "description": None, "id": None}
     
-    
-    # Detectar productos disponibles
-    elif any(word in query for word in ['disponible', 'stock', 'hay', 'tengo', 'existe', 'disponibles', 'en stock', 'inventario']):
-        return {"action": "listar_disponibles", "name": None, "quantity": None, "description": None, "id": None}
+    # Detectar tendencias/análisis
+    elif any(word in query for word in ['tendencia', 'tendencias', 'analisis', 'análisis', 'patrones']):
+        return {"action": "tendencias", "name": None, "quantity": None, "description": None, "id": None}
     
     # Preguntas generales - usar IA conversacional
     elif any(word in query for word in ['qué', 'que', 'como', 'cómo', 'por que', 'por qué', 'cuando', 'cuándo', 'donde', 'dónde', 'quien', 'quién', 'explica', 'ayuda', 'ayudame', 'ayúdame', 'información', 'help', 'hola', 'hi', 'buenos días', 'buenas tardes', 'buenas noches']):
@@ -67,11 +118,19 @@ def ejecutar_accion(action_data, productos_data):
             return actualizar_producto(action_data)
         elif action == 'añadir':
             return añadir_producto(action_data)
+        elif action == 'predecir':
+            return predecir_demanda(action_data)
+        elif action == 'sugerir_reabastecimiento':
+            return sugerir_reabastecimiento(action_data)
+        elif action == 'tendencias':
+            return analizar_tendencias(action_data)
+        elif action == 'registrar_venta':
+            return flujo_registrar_venta(action_data)
         elif action == 'conversacional':
             return respuesta_conversacional(action_data, productos_data)
         else:
             return {
-                'mensaje': f"Acción '{action}' no reconocida. Puedes usar: listar, eliminar, actualizar, añadir, mostrar producto, o simplemente preguntarme lo que quieras.",
+                'mensaje': f"Acción '{action}' no reconocida. Puedes usar: listar, eliminar, actualizar, añadir, mostrar producto, predecir, sugerir reabastecimiento, tendencias o conversar.",
                 'datos': {}
             }
     except Exception as e:
@@ -81,7 +140,7 @@ def ejecutar_accion(action_data, productos_data):
         }
 
 def listar_todos_productos(productos_data):
-    """Listar todos los productos"""
+    """Listar todos los productos con formato empresarial (estado, precio, promo)."""
     if not productos_data:
         return {
             'mensaje': "El inventario está vacío. No hay productos registrados.",
@@ -90,11 +149,22 @@ def listar_todos_productos(productos_data):
     
     mensaje = "📦 **INVENTARIO COMPLETO**\n\n"
     for producto in productos_data:
-        status = "✅ Disponible" if producto['cantidad'] > 0 else "❌ Agotado"
-        mensaje += f"• **{producto['nombre']}** (ID: {producto['id']})\n"
-        mensaje += f"  Cantidad: {producto['cantidad']} unidades - {status}\n"
-        if producto['descripcion']:
-            mensaje += f"  Descripción: {producto['descripcion'][:60]}...\n"
+        cantidad = producto.get('cantidad', 0)
+        precio = producto.get('precio', 0)
+        safety = producto.get('min_stock', 0) or 0
+        estado = 'NORMAL'
+        if cantidad <= 0:
+            estado = 'CRITICO'
+        elif cantidad <= (safety if safety else max(1, int(cantidad*0.2))):
+            estado = 'BAJO'
+        promo = ''
+        # Si hubiéramos incluido promo en productos_data, la mostraríamos aquí
+        mensaje += (
+            f"• **{producto['nombre']}** (ID: {producto['id']})\n"
+            f"  Stock: {cantidad} | Estado: {estado} | Precio: $ {precio:.2f} {promo}\n"
+        )
+        if producto.get('descripcion'):
+            mensaje += f"  {producto['descripcion'][:80]}\n"
         mensaje += "\n"
     
     return {
@@ -187,7 +257,7 @@ def eliminar_producto(action_data, productos_data):
                         'requerido': True,
                         'tipo': 'select',
                         'opciones': [
-                            {'valor': p['id'], 'texto': f"{p['nombre']} (ID: {p['id']}) - {p['cantidad']} unidades"}
+                            {'valor': p['id'], 'texto': f"{p['nombre']} (ID: {p['id']}) - {p['cantidad']} unidades - $ {p.get('precio', 0):.2f}"}
                             for p in productos_data
                         ]
                     }
@@ -217,16 +287,62 @@ def eliminar_producto(action_data, productos_data):
         }
 
 def actualizar_producto(action_data):
-    """Actualizar un producto (solo cantidad por simplicidad)"""
+    """Actualizar un producto (cantidad, precio, costo, min/max stock)"""
     nombre_actualizar = action_data.get('name', '')
     if nombre_actualizar:
         nombre_actualizar = nombre_actualizar.strip()
     nueva_cantidad = action_data.get('quantity')
+    nuevo_precio = action_data.get('selling_price')
+    nuevo_costo = action_data.get('cost_price')
+    nuevo_min = action_data.get('min_stock')
+    nuevo_max = action_data.get('max_stock')
     
-    if not nombre_actualizar or nueva_cantidad is None:
+    if not nombre_actualizar:
+        # Solicitar datos con formulario completo
         return {
-            'mensaje': "Para actualizar un producto necesito el nombre y la nueva cantidad. Ejemplo: 'actualiza el teclado a 20'",
-            'datos': {}
+            'mensaje': "🛠️ **ACTUALIZAR PRODUCTO**\n\nIndica los campos a actualizar:",
+            'datos': {
+                'tipo': 'formulario',
+                'accion': 'actualizar',
+                'campos': {
+                    'producto': {
+                        'label': 'Nombre del producto',
+                        'valor': '',
+                        'requerido': True,
+                        'placeholder': 'Ej: Teclado Mecánico'
+                    },
+                    'cantidad': {
+                        'label': 'Nueva cantidad',
+                        'valor': '',
+                        'requerido': False,
+                        'tipo': 'number'
+                    },
+                    'precio': {
+                        'label': 'Nuevo precio de venta',
+                        'valor': '',
+                        'requerido': False,
+                        'tipo': 'number'
+                    },
+                    'costo': {
+                        'label': 'Nuevo precio de costo',
+                        'valor': '',
+                        'requerido': False,
+                        'tipo': 'number'
+                    },
+                    'min_stock': {
+                        'label': 'Nuevo stock mínimo',
+                        'valor': '',
+                        'requerido': False,
+                        'tipo': 'number'
+                    },
+                    'max_stock': {
+                        'label': 'Nuevo stock máximo',
+                        'valor': '',
+                        'requerido': False,
+                        'tipo': 'number'
+                    }
+                }
+            }
         }
     
     try:
@@ -239,13 +355,40 @@ def actualizar_producto(action_data):
                 'datos': {}
             }
         
-        cantidad_anterior = producto.quantity
-        producto.quantity = max(0, nueva_cantidad)
+        cambios = {}
+        if nueva_cantidad is not None:
+            producto.quantity = max(0, int(nueva_cantidad))
+            cambios['cantidad'] = producto.quantity
+        if nuevo_precio is not None:
+            try:
+                producto.selling_price = float(nuevo_precio)
+                cambios['precio'] = float(producto.selling_price)
+            except Exception:
+                pass
+        if nuevo_costo is not None:
+            try:
+                producto.cost_price = float(nuevo_costo)
+                cambios['costo'] = float(producto.cost_price)
+            except Exception:
+                pass
+        if nuevo_min is not None:
+            try:
+                producto.min_stock_level = int(nuevo_min)
+                cambios['min_stock'] = producto.min_stock_level
+            except Exception:
+                pass
+        if nuevo_max is not None:
+            try:
+                producto.max_stock_level = int(nuevo_max)
+                cambios['max_stock'] = producto.max_stock_level
+            except Exception:
+                pass
+        
         producto.save()
         
         return {
-            'mensaje': f"✅ **PRODUCTO ACTUALIZADO**\n\n**{producto.name}**\nCantidad anterior: {cantidad_anterior}\nCantidad nueva: {producto.quantity}",
-            'datos': {'producto': {'id': producto.id, 'name': producto.name, 'quantity': producto.quantity}}
+            'mensaje': f"✅ **PRODUCTO ACTUALIZADO**\n\n**{producto.name}**\nCambios: {cambios}",
+            'datos': {'producto': {'id': producto.id, 'name': producto.name, **cambios}}
         }
     except Exception as e:
         return {
@@ -261,7 +404,8 @@ def añadir_producto(action_data):
     else:
         nombre_nuevo = ''
     
-    cantidad = action_data.get('quantity', 0)
+    # Aceptar tanto 'quantity' como 'stock' (compatibilidad)
+    cantidad = action_data.get('stock', action_data.get('quantity', 0))
     if cantidad is None:
         cantidad = 0
     
@@ -283,11 +427,18 @@ def añadir_producto(action_data):
                         'requerido': True,
                         'placeholder': 'Ej: Teclado Mecánico RGB'
                     },
-                    'cantidad': {
-                        'label': 'Cantidad inicial',
+                    'stock': {
+                        'label': 'Stock inicial',
                         'valor': cantidad if cantidad and cantidad > 0 else '',
                         'requerido': True,
                         'placeholder': 'Ej: 10',
+                        'tipo': 'number'
+                    },
+                    'precio': {
+                        'label': 'Precio de venta (USD)',
+                        'valor': '',
+                        'requerido': True,
+                        'placeholder': 'Ej: 49.99',
                         'tipo': 'number'
                     },
                     'descripcion': {
@@ -295,6 +446,37 @@ def añadir_producto(action_data):
                         'valor': descripcion if descripcion else '',
                         'requerido': True,
                         'placeholder': 'Ej: Teclado mecánico gaming con retroiluminación RGB'
+                    },
+                    'safety_stock': {
+                        'label': 'Stock de seguridad',
+                        'valor': 0,
+                        'requerido': False,
+                        'placeholder': 'Ej: 5',
+                        'tipo': 'number'
+                    },
+                    'seasonality_index': {
+                        'label': 'Índice de estacionalidad (0.1-3.0)',
+                        'valor': 1.0,
+                        'requerido': False,
+                        'placeholder': 'Ej: 1.2',
+                        'tipo': 'number'
+                    },
+                    'promotion_active': {
+                        'label': 'Promoción activa',
+                        'valor': False,
+                        'requerido': False,
+                        'tipo': 'select',
+                        'opciones': [
+                            {'valor': False, 'texto': 'No'},
+                            {'valor': True, 'texto': 'Sí'}
+                        ]
+                    },
+                    'current_discount': {
+                        'label': 'Descuento actual (%)',
+                        'valor': 0,
+                        'requerido': False,
+                        'placeholder': 'Ej: 10',
+                        'tipo': 'number'
                     }
                 }
             }
@@ -305,7 +487,9 @@ def añadir_producto(action_data):
         nuevo_producto = Product.objects.create(
             name=nombre_nuevo,
             quantity=max(0, cantidad),
-            description=descripcion
+            description=descripcion,
+            selling_price=action_data.get('precio') or 0,
+            sku=_generate_unique_sku()
         )
         
         return {
@@ -321,120 +505,239 @@ def añadir_producto(action_data):
 # Funciones de imágenes eliminadas para simplificar el sistema
 
 def respuesta_conversacional(action_data, productos_data):
-    """Respuesta conversacional súper inteligente usando Vertex AI"""
-    try:
-        # Configuración de Vertex AI
-        PROJECT_ID = "stone-poetry-473315-a9"
-        LOCATION = "us-central1"
-        PRIMARY_MODEL = "gemini-1.5-flash"
-        FALLBACK_MODEL = "gemini-2.5-flash"
-        
-        # Inicializar Vertex AI
-        vertexai.init(project=PROJECT_ID, location=LOCATION)
-        
-        # Crear prompt conversacional súper avanzado
-        total_productos = len(productos_data)
-        productos_disponibles = len([p for p in productos_data if p['cantidad'] > 0])
-        productos_agotados = total_productos - productos_disponibles
-        
-        user_query = action_data.get('user_query', '')
-        
-        prompt = f"""
-        Eres un asistente virtual EXTREMADAMENTE inteligente y conversacional. 
-        Eres como ChatGPT pero con acceso a información de inventario.
-        
-        PREGUNTA ESPECÍFICA DEL USUARIO: "{user_query}"
-        
-        INFORMACIÓN DEL INVENTARIO (solo para contexto):
-        - Total de productos: {total_productos}
-        - Productos disponibles: {productos_disponibles}
-        - Productos agotados: {productos_agotados}
-        - Lista: {json.dumps(productos_data, ensure_ascii=False, indent=2)}
-        
-        REGLAS IMPORTANTES:
-        1. SIEMPRE responde PRIMERO la pregunta específica del usuario: "{user_query}"
-        2. Si es una pregunta general (no de inventario), responde directamente como ChatGPT
-        3. Solo menciona el inventario si es relevante o al final como información adicional
-        4. No te enfoques solo en inventario si la pregunta es sobre otro tema
-        
-        PERSONALIDAD:
-        - Muy amigable, natural y conversacional
-        - Usas emojis apropiados
-        - Respondes como una persona real, no como un robot
-        - Puedes hacer chistes, ser empático, dar consejos
-        - Hablas en español natural de Latinoamérica
-        
-        FORMATO DE RESPUESTA:
-        - Máximo 200 palabras
-        - Responde DIRECTAMENTE la pregunta del usuario
-        - Si es relevante, menciona el inventario al final
-        - Usa emojis para hacer más amigable
-        
-        EJEMPLOS CORRECTOS:
-        - Pregunta: "¿Cuál es la capital de España?" → "¡Madrid! 🇪🇸 La capital de España es Madrid, una ciudad increíble con mucha historia y cultura. ¿Te gustaría saber algo más sobre Madrid o España?"
-        - Pregunta: "¿Qué es la fotosíntesis?" → "¡Excelente pregunta! 🌱 La fotosíntesis es el proceso por el cual las plantas convierten la luz solar en energía... [explicación]. ¿Te interesa saber más sobre biología?"
-        - Pregunta: "¿Cómo está mi inventario?" → "Tu inventario tiene {total_productos} productos ({productos_disponibles} disponibles, {productos_agotados} agotados). 📊 [análisis específico]"
-        
-        CONTEXTO: El usuario está en un sistema de inventario, pero puede preguntar CUALQUIER COSA.
-        
-        Responde DIRECTAMENTE la pregunta: "{user_query}". No te enfoques solo en inventario.
-        """
-        
-        # Intentar con el modelo principal
-        last_error = None
-        for model_name in (PRIMARY_MODEL, FALLBACK_MODEL):
-            try:
-                model = GenerativeModel(model_name)
-                response = model.generate_content(prompt)
-                respuesta = response.text if hasattr(response, "text") else str(response)
-                return {
-                    'mensaje': f"🤖 **{respuesta}**",
-                    'datos': {'tipo': 'conversacional'}
+    """Respuesta conversacional: usa Vertex AI si está disponible; si no, fallback local."""
+    raw_query = action_data.get('user_query') or ''
+    user_query = raw_query.lower()
+    total_productos = len(productos_data)
+    productos_disponibles = len([p for p in productos_data if p['cantidad'] > 0])
+    productos_agotados = total_productos - productos_disponibles
+
+    # Intentar Vertex AI si hay configuración
+    vertexai, GenerativeModel = _maybe_load_vertex()
+    project_id = os.getenv('VERTEX_PROJECT_ID')
+    location = os.getenv('VERTEX_LOCATION', 'us-central1')
+    model_primary = os.getenv('VERTEX_MODEL', 'gemini-1.5-flash')
+    model_fallback = os.getenv('VERTEX_MODEL_FALLBACK', 'gemini-2.5-flash')
+
+    if vertexai and GenerativeModel and project_id:
+        try:
+            vertexai.init(project=project_id, location=location)
+            prompt = (
+                f"Responde en español de forma concisa y amable a: '{raw_query}'. "
+                f"Contexto de inventario: total={total_productos}, disp={productos_disponibles}, agotados={productos_agotados}."
+            )
+            for model_name in (model_primary, model_fallback):
+                try:
+                    model = GenerativeModel(model_name)
+                    response = model.generate_content(prompt)
+                    text = response.text if hasattr(response, 'text') else str(response)
+                    if text:
+                        return {
+                            'mensaje': f"🤖 **{text}**",
+                            'datos': {'tipo': 'conversacional', 'provider': 'vertex'}
+                        }
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    # Fallback local
+    if 'capital' in user_query and 'españa' in user_query:
+        return {
+            'mensaje': "🤖 **¡Madrid! 🇪🇸**\n\nLa capital de España es Madrid.",
+            'datos': {'tipo': 'conversacional', 'provider': 'local'}
+        }
+    if 'capital' in user_query and 'francia' in user_query:
+        return {
+            'mensaje': "🤖 **¡París! 🇫🇷**\n\nLa capital de Francia es París.",
+            'datos': {'tipo': 'conversacional', 'provider': 'local'}
+        }
+
+    if total_productos == 0:
+        texto = (
+            "🤖 **¡Hola! 😊**\n\nTu inventario está vacío. "
+            "Puedo ayudarte a añadir productos, listar inventario o analizar tendencias."
+        )
+    else:
+        texto = (
+            f"🤖 **¡Hola! 😊**\n\nInventario: {total_productos} productos "
+            f"({productos_disponibles} disponibles, {productos_agotados} agotados). "
+            "Puedo listar, analizar y predecir demanda."
+        )
+
+    return {
+        'mensaje': texto,
+        'datos': {'tipo': 'conversacional', 'provider': 'local'}
+    }
+
+# --- Acciones IA ---
+
+def predecir_demanda(action_data):
+    # Leer horizonte; si no hay, pedirlo al usuario
+    def _to_int(value, default=None):
+        try:
+            if value is None:
+                return default
+            text = str(value).strip()
+            if text == '':
+                return default
+            return int(float(text))
+        except Exception:
+            return default
+
+    periodo = _to_int(action_data.get('periodo') or action_data.get('dias') or action_data.get('days'), None)
+    if periodo is None:
+        return {
+            'mensaje': "🔮 Elige el horizonte de la predicción:",
+            'datos': {
+                'tipo': 'formulario',
+                'accion': 'predecir',
+                'campos': {
+                    'periodo': {
+                        'label': 'Horizonte (días)',
+                        'tipo': 'select',
+                        'requerido': True,
+                        'opciones': [
+                            {'valor': 3, 'texto': '3 días'},
+                            {'valor': 7, 'texto': '7 días'},
+                            {'valor': 30, 'texto': '30 días'},
+                            {'valor': 60, 'texto': '60 días'}
+                        ]
+                    }
                 }
-            except Exception as e:
-                last_error = e
-                continue
-        
-        # Si falla, respuesta por defecto más inteligente
-        raise last_error
-        
-    except Exception as e:
-        # Respuesta de fallback más conversacional
-        user_query = action_data.get('user_query', '').lower()
-        
-        # Respuestas directas para preguntas comunes
-        if 'capital' in user_query and 'españa' in user_query:
-            return {
-                'mensaje': f"🤖 **¡Madrid! 🇪🇸**\n\nLa capital de España es Madrid, una ciudad increíble con mucha historia, cultura y vida nocturna. ¡Es una de mis ciudades favoritas! 😊\n\n¿Te gustaría saber algo más sobre Madrid o España?",
-                'datos': {'tipo': 'conversacional'}
             }
-        elif 'capital' in user_query and 'francia' in user_query:
-            return {
-                'mensaje': f"🤖 **¡París! 🇫🇷**\n\nLa capital de Francia es París, la Ciudad de la Luz. Con la Torre Eiffel, el Louvre y los Champs-Élysées, ¡es una ciudad mágica! ✨\n\n¿Te interesa saber más sobre París?",
-                'datos': {'tipo': 'conversacional'}
-            }
-        elif 'qué es' in user_query and 'ia' in user_query:
-            return {
-                'mensaje': f"🤖 **¡Excelente pregunta!**\n\nLa Inteligencia Artificial (IA) es la capacidad de las máquinas para simular inteligencia humana, aprender y tomar decisiones. ¡Como yo! 😊\n\n¿Te gustaría saber más sobre cómo funciona la IA?",
-                'datos': {'tipo': 'conversacional'}
-            }
-        elif 'hola' in user_query or 'hi' in user_query:
-            return {
-                'mensaje': f"🤖 **¡Hola! 😊**\n\n¡Qué gusto verte! Soy tu asistente inteligente y estoy aquí para ayudarte con cualquier cosa que necesites.\n\nPuedo responder preguntas sobre cualquier tema, ayudarte con tu inventario, o simplemente charlar. ¿En qué te puedo ayudar?",
-                'datos': {'tipo': 'conversacional'}
-            }
-        else:
-            # Respuesta genérica pero útil
-            if total_productos == 0:
-                return {
-                    'mensaje': f"🤖 **¡Hola! 😊**\n\nSoy tu asistente inteligente. Veo que tu inventario está vacío, ¡perfecto momento para empezar! 🚀\n\nPuedo ayudarte con:\n• 📝 Agregar productos: 'añade 5 teclados'\n• 📊 Ver el inventario: 'muestra todo'\n• ❓ Responder cualquier pregunta que tengas\n\n¿Qué te gustaría hacer?",
-                    'datos': {'tipo': 'conversacional'}
+        }
+
+    service = DemandPredictionService()
+    productos = Product.objects.all()
+    resultados = []
+    for p in productos:
+        pred_custom = service.predict_demand(p.id, periodo)
+        resultados.append({
+            'product_id': p.id,
+            'product_name': p.name,
+            'current_stock': p.quantity,
+            'avg_period': pred_custom['average_daily'] if pred_custom else 0,
+            'total_period': pred_custom['total_demand'] if pred_custom else 0,
+            'seasonality_index': getattr(p, 'seasonality_index', 1.0) or 1.0,
+            'promotion_active': getattr(p, 'promotion_active', False),
+            'current_discount': float(getattr(p, 'current_discount', 0) or 0),
+        })
+    # Ordenar por mayor demanda en el período y tomar top 5
+    resultados.sort(key=lambda x: x['total_period'], reverse=True)
+    top = resultados[:5]
+    # Construir mensaje legible
+    mensaje = f"🔮 Predicciones para {periodo} días\n\n"
+    if top:
+        mensaje += "Principales productos por demanda:\n"
+        for r in top:
+            dias_supply = (r['current_stock'] / r['avg_period']) if r['avg_period'] else float('inf')
+            dias_txt = (f"{dias_supply:.1f} días" if dias_supply != float('inf') else "∞ días")
+            mensaje += (
+                f"• {r['product_name']}: stock {r['current_stock']}, "
+                f"demanda total {r['total_period']:.1f}, promedio diario {r['avg_period']:.1f}, "
+                f"suministro {dias_txt}"
+            )
+            if r.get('promotion_active'):
+                mensaje += " (promo activa)"
+            mensaje += "\n"
+    else:
+        mensaje += "No hay productos registrados."
+    return {
+        'mensaje': mensaje,
+        'datos': {'predictions': resultados}
+    }
+
+def sugerir_reabastecimiento(action_data):
+    pred_service = DemandPredictionService()
+    reorder_service = ReorderSuggestionService(pred_service)
+    productos = Product.objects.all()
+    sugerencias = []
+    for p in productos:
+        data = reorder_service.calculate_reorder_suggestion(p.id)
+        if data:
+            sugerencias.append(data)
+    sugerencias.sort(key=lambda x: x['days_of_supply'])
+    return {
+        'mensaje': "🛒 Sugerencias de reabastecimiento generadas.",
+        'datos': {'sugerencias': sugerencias}
+    }
+
+def analizar_tendencias(action_data):
+    # Leer período; si no hay, pedirlo
+    def _to_int(value, default=None):
+        try:
+            if value is None:
+                return default
+            text = str(value).strip()
+            if text == '':
+                return default
+            return int(float(text))
+        except Exception:
+            return default
+
+    periodo = _to_int(action_data.get('periodo') or action_data.get('dias') or action_data.get('days'), None)
+    if periodo is None:
+        return {
+            'mensaje': "📈 Elige el período para el análisis:",
+            'datos': {
+                'tipo': 'formulario',
+                'accion': 'tendencias',
+                'campos': {
+                    'periodo': {
+                        'label': 'Período (días)',
+                        'tipo': 'select',
+                        'requerido': True,
+                        'opciones': [
+                            {'valor': 3, 'texto': '3 días'},
+                            {'valor': 7, 'texto': '7 días'},
+                            {'valor': 30, 'texto': '30 días'},
+                            {'valor': 60, 'texto': '60 días'}
+                        ]
+                    }
                 }
-            else:
-                return {
-                    'mensaje': f"🤖 **¡Hola! 😊**\n\nSoy tu asistente inteligente. Tu inventario tiene {total_productos} productos ({productos_disponibles} disponibles, {productos_agotados} agotados). 📊\n\nPuedo ayudarte con:\n• 📝 Gestión de productos (añadir, eliminar, actualizar)\n• 📊 Análisis del inventario\n• 💬 Responder cualquier pregunta que tengas\n• 🎯 Darte consejos y sugerencias\n\n¿En qué te puedo ayudar hoy?",
-                    'datos': {'tipo': 'conversacional'}
-                }
+            }
+        }
+
+    service = TrendAnalysisService()
+    trends = service.analyze_trends(periodo)
+    # Construir resumen legible
+    total_products = trends.get('total_products', 0)
+    total_revenue = float(trends.get('total_revenue', 0))
+    low_stock = trends.get('low_stock_products', [])
+    need_reorder = trends.get('products_needing_reorder', 0)
+    top = trends.get('top_selling_products', [])[:5]
+
+    mensaje = f"📈 Análisis de tendencias (últimos {periodo} días)\n\n"
+    mensaje += f"Productos: {total_products} | Ingresos: $ {total_revenue:,.2f} | Reorden: {need_reorder}\n\n"
+    if top:
+        mensaje += "Top ventas:\n"
+        for item in top:
+            nombre = item.get('product__name')
+            vendidos = item.get('total_sold', 0)
+            ingreso = float(item.get('total_revenue', 0) or 0)
+            mensaje += f"• {nombre}: {vendidos} unidades, $ {ingreso:,.2f}\n"
+        mensaje += "\n"
+    if low_stock:
+        mensaje += "Stock bajo:\n"
+        for p in low_stock[:5]:
+            nombre = p.get('name')
+            qty = p.get('quantity', 0)
+            minlvl = p.get('min_stock_level', 0)
+            mensaje += f"• {nombre}: {qty}/{minlvl}\n"
+    else:
+        mensaje += "No hay productos con stock bajo."
+
+    return {
+        'mensaje': mensaje,
+        'datos': {'trends': {
+            'top_selling_products': top,
+            'low_stock_products': low_stock,
+            'total_revenue': total_revenue,
+            'total_products': total_products,
+            'products_needing_reorder': need_reorder
+        }}
+    }
 
 def inicio(request):
     """Vista principal del inventario"""
@@ -471,88 +774,20 @@ def consultar_inventario_ia(request):
                     'id': producto.id,
                     'nombre': producto.name,
                     'descripcion': producto.description,
-                    'cantidad': producto.quantity
+                    'cantidad': producto.quantity,
+                    'precio': float(producto.selling_price or 0),
+                    'costo': float(producto.cost_price or 0),
+                    'min_stock': producto.min_stock_level,
+                    'max_stock': producto.max_stock_level,
+                    'estado_stock': producto.stock_status,
+                    'pred_demanda_7d': producto.predicted_demand_7d,
+                    'pred_demanda_30d': producto.predicted_demand_30d,
+                    'sugerir_reorden': producto.reorder_suggestion,
+                    'cantidad_reorden': producto.reorder_quantity,
                 })
             
-            # Usar Vertex AI para interpretar la acción
-            try:
-                # Configuración de Vertex AI (misma que en consultar_inventario.py)
-                PROJECT_ID = "stone-poetry-473315-a9"
-                LOCATION = "us-central1"
-                PRIMARY_MODEL = "gemini-1.5-flash"
-                FALLBACK_MODEL = "gemini-2.5-flash"
-                
-                # Inicializar Vertex AI
-                vertexai.init(project=PROJECT_ID, location=LOCATION)
-                
-                # Crear prompt para interpretar acciones súper inteligente
-                prompt = f"""
-                Eres un asistente súper inteligente que convierte instrucciones naturales en JSON.
-                Analiza el contexto completo y responde SOLO con JSON válido.
-                
-                CAMPOS JSON:
-                {{"action": one_of['listar','listar_disponibles','mostrar_producto','eliminar','actualizar','añadir','salir','conversacional'],
-                 "name": string|null, "quantity": int|null, "description": string|null, "id": int|null}}
-                
-                INVENTARIO ACTUAL:
-                {json.dumps(productos_data, ensure_ascii=False, indent=2)}
-                
-                REGLAS DE INTERPRETACIÓN:
-                1. Si es una PREGUNTA (qué, cómo, por qué, cuándo, dónde, quién) → "conversacional"
-                2. Si es un SALUDO (hola, hi, buenos días) → "conversacional"  
-                3. Si menciona "disponible", "stock", "hay" → "listar_disponibles"
-                4. Si menciona "todo", "completo", "listar" → "listar"
-                5. Si menciona "eliminar", "borrar", "quitar" → "eliminar"
-                6. Si menciona "añadir", "agregar", "crear", "nuevo" → "añadir"
-                7. Si menciona "actualizar", "cambiar", "modificar" → "actualizar"
-                8. Si menciona "mostrar", "ver", "detalles" → "mostrar_producto"
-                9. Si menciona "salir", "cerrar", "terminar" → "salir"
-                
-                EJEMPLOS AVANZADOS:
-                - "¿cómo estoy?" → {{"action":"conversacional", "name":null, "quantity":null, "description":null, "id":null}}
-                - "hola, ¿qué tal?" → {{"action":"conversacional", "name":null, "quantity":null, "description":null, "id":null}}
-                - "qué productos tengo disponibles" → {{"action":"listar_disponibles", "name":null, "quantity":null, "description":null, "id":null}}
-                - "muestra todo mi inventario" → {{"action":"listar", "name":null, "quantity":null, "description":null, "id":null}}
-                - "elimina el mouse inalámbrico" → {{"action":"eliminar", "name":"mouse inalámbrico", "quantity":null, "description":null, "id":null}}
-                - "quiero añadir 5 teclados gaming" → {{"action":"añadir", "name":"teclados gaming", "quantity":5, "description":null, "id":null}}
-                - "necesito crear un nuevo producto" → {{"action":"añadir", "name":null, "quantity":null, "description":null, "id":null}}
-                - "actualiza el monitor a 15 unidades" → {{"action":"actualizar", "name":"monitor", "quantity":15, "description":null, "id":null}}
-                - "muestra información del teclado" → {{"action":"mostrar_producto", "name":"teclado", "quantity":null, "description":null, "id":null}}
-                - "quiero salir del sistema" → {{"action":"salir", "name":null, "quantity":null, "description":null, "id":null}}
-                - "¿qué es la inteligencia artificial?" → {{"action":"conversacional", "name":null, "quantity":null, "description":null, "id":null}}
-                
-                CONSULTA DEL USUARIO: {user_query}
-                
-                JSON RESPUESTA:
-                """
-                
-                # Intentar con el modelo principal
-                last_error = None
-                for model_name in (PRIMARY_MODEL, FALLBACK_MODEL):
-                    try:
-                        model = GenerativeModel(model_name)
-                        response = model.generate_content(prompt)
-                        text = response.text if hasattr(response, "text") else str(response)
-                        
-                        # Extraer JSON
-                        start = text.find("{")
-                        end = text.rfind("}")
-                        if start != -1 and end != -1 and end > start:
-                            text = text[start : end + 1]
-                        
-                        action_data = json.loads(text)
-                        break
-                    except Exception as e:
-                        last_error = e
-                        continue
-                else:
-                    # Si ambos modelos fallan, usar detección simple
-                    action_data = detectar_accion_simple(user_query)
-                    
-            except Exception as e:
-                # Si falla Vertex AI, usar detección simple
-                print(f"Error con Vertex AI: {e}")
-                action_data = detectar_accion_simple(user_query)
+            # Interpretación local basada en reglas y palabras clave (sin servicios externos)
+            action_data = detectar_accion_simple(user_query)
             
             # Añadir la consulta original al action_data
             action_data['user_query'] = user_query
@@ -575,18 +810,54 @@ def consultar_inventario_ia(request):
     
     return render(request, 'inventario/consultar_ia.html')
 
+@csrf_exempt
 def procesar_formulario(request):
     """Vista para procesar formularios de productos"""
     if request.method == 'POST':
         try:
-            data = json.loads(request.body) if request.body else {}
+            # Intentar leer como JSON; si falla, caer a form/urlencoded
+            data = {}
+            try:
+                if request.body:
+                    data = json.loads(request.body)
+            except Exception:
+                # Fallback: construir data desde request.POST (form submit)
+                data = {
+                    'accion': request.POST.get('accion'),
+                    'campos': {}
+                }
+                # Copiar todos los parámetros simples como campos
+                for key, value in request.POST.items():
+                    if key in ['accion', 'csrfmiddlewaretoken']:
+                        continue
+                    data['campos'][key] = value
+
             accion = data.get('accion')
             campos = data.get('campos', {})
+
+            # Normalización: si solo llega período/días, interpretar como predicción o análisis
+            period_keys = {'periodo', 'dias', 'days'}
+            if any(k in campos for k in period_keys) and accion in [None, 'añadir']:
+                accion = data.get('accion_sugerida') or 'predecir'
             
             if accion == 'añadir':
                 return procesar_añadir_producto(campos)
             elif accion == 'eliminar':
                 return procesar_eliminar_producto(campos)
+            elif accion == 'actualizar':
+                return procesar_actualizar_producto(campos)
+            elif accion == 'predecir':
+                res = predecir_demanda(campos)
+                return JsonResponse({'success': True, 'respuesta': res.get('mensaje', ''), 'accion': 'predecir', 'datos': res.get('datos', {})})
+            elif accion == 'sugerir_reabastecimiento':
+                res = sugerir_reabastecimiento(campos)
+                return JsonResponse({'success': True, 'respuesta': res.get('mensaje', ''), 'accion': 'sugerir_reabastecimiento', 'datos': res.get('datos', {})})
+            elif accion == 'tendencias':
+                res = analizar_tendencias(campos)
+                return JsonResponse({'success': True, 'respuesta': res.get('mensaje', ''), 'accion': 'tendencias', 'datos': res.get('datos', {})})
+            elif accion == 'registrar_venta':
+                res = procesar_registrar_venta(campos)
+                return res
             else:
                 return JsonResponse({
                     'success': False,
@@ -616,17 +887,47 @@ def procesar_añadir_producto(campos):
         if descripcion:
             descripcion = descripcion.strip()
         
-        # Manejo más robusto de la cantidad
+        # Manejo de stock (solo "stock")
         try:
-            cantidad_str = campos.get('cantidad', '0')
-            if cantidad_str:
-                cantidad_str = cantidad_str.strip()
-            if cantidad_str == '':
+            stock_str = campos.get('stock', '0')
+            if stock_str:
+                stock_str = str(stock_str).strip()
+            if stock_str == '':
                 cantidad = 0
             else:
-                cantidad = int(cantidad_str)
+                cantidad = int(float(stock_str))
         except (ValueError, TypeError):
             cantidad = 0
+        
+        # Campo precio y planificación opcional
+        def to_decimal(value, default='0'):
+            try:
+                text = (value if value is not None else default)
+                text = str(text).strip()
+                if text == '':
+                    return 0
+                return float(text)
+            except Exception:
+                return 0
+        
+        precio = to_decimal(campos.get('precio'))
+        # Nuevos opcionales
+        # lead_time_days removido del formulario; usaremos valor por defecto del modelo si se requiere
+        lead_time_days = None
+        try:
+            safety_stock = int(float((campos.get('safety_stock') or '0').strip()))
+        except Exception:
+            safety_stock = 0
+        try:
+            seasonality_index = float((campos.get('seasonality_index') or '1').strip())
+        except Exception:
+            seasonality_index = 1.0
+        # Promoción
+        promotion_active = str(campos.get('promotion_active', 'False')).lower() in ['true', '1', 'si', 'sí', 'yes']
+        try:
+            current_discount = float((campos.get('current_discount') or '0').strip())
+        except Exception:
+            current_discount = 0
         
         if not nombre or not descripcion:
             return JsonResponse({
@@ -634,21 +935,28 @@ def procesar_añadir_producto(campos):
                 'error': 'Nombre y descripción son obligatorios'
             })
         
-        # Validar que la cantidad sea un número positivo
         if cantidad < 0:
             cantidad = 0
         
-        nuevo_producto = Product.objects.create(
+        kwargs = dict(
             name=nombre,
             quantity=cantidad,
-            description=descripcion
+            description=descripcion,
+            selling_price=precio,
+            sku=_generate_unique_sku(),
+            safety_stock=safety_stock,
+            seasonality_index=seasonality_index,
+            promotion_active=promotion_active,
+            current_discount=current_discount
         )
+        # No pasar lead_time_days si es None
+        nuevo_producto = Product.objects.create(**{k: v for k, v in kwargs.items() if v is not None})
         
         return JsonResponse({
             'success': True,
-            'respuesta': f"✅ **PRODUCTO AÑADIDO**\n\n**{nuevo_producto.name}** (ID: {nuevo_producto.id})\nCantidad: {nuevo_producto.quantity} unidades\nDescripción: {nuevo_producto.description}",
+            'respuesta': f"✅ **PRODUCTO AÑADIDO**\n\n**{nuevo_producto.name}** (ID: {nuevo_producto.id})\nCantidad: {nuevo_producto.quantity} unidades\nPrecio: ${nuevo_producto.selling_price}\nDescripción: {nuevo_producto.description}",
             'accion': 'añadir',
-            'datos': {'producto': {'id': nuevo_producto.id, 'name': nuevo_producto.name, 'quantity': nuevo_producto.quantity}}
+            'datos': {'producto': {'id': nuevo_producto.id, 'name': nuevo_producto.name, 'quantity': nuevo_producto.quantity, 'selling_price': float(nuevo_producto.selling_price)}}
         })
         
     except Exception as e:
@@ -692,3 +1000,177 @@ def procesar_eliminar_producto(campos):
             'success': False,
             'error': f'Error al eliminar producto: {str(e)}'
         })
+
+def procesar_actualizar_producto(campos):
+    """Procesar el formulario de actualizar producto"""
+    try:
+        from inventario.models import Product
+        
+        nombre_actualizar = campos.get('producto', '')
+        if not nombre_actualizar:
+            return JsonResponse({
+                'success': False,
+                'error': 'Debes seleccionar un producto para actualizar'
+            })
+        
+        producto = Product.objects.filter(name__icontains=nombre_actualizar).first()
+        if not producto:
+            return JsonResponse({
+                'success': False,
+                'error': f"❌ No encontré el producto '{nombre_actualizar}'. Usa 'listar' para ver todos los productos."
+            })
+        
+        # Aceptar 'stock' como alias de 'cantidad' para compatibilidad
+        nueva_cantidad = campos.get('stock') if campos.get('stock') is not None else campos.get('cantidad')
+        nuevo_precio = campos.get('precio')
+        nuevo_costo = campos.get('costo')
+        nuevo_min = campos.get('min_stock')
+        nuevo_max = campos.get('max_stock')
+        
+        cambios = {}
+        if nueva_cantidad is not None:
+            try:
+                producto.quantity = max(0, int(nueva_cantidad))
+                cambios['cantidad'] = producto.quantity
+            except Exception:
+                pass
+        if nuevo_precio is not None:
+            try:
+                producto.selling_price = float(nuevo_precio)
+                cambios['precio'] = float(producto.selling_price)
+            except Exception:
+                pass
+        if nuevo_costo is not None:
+            try:
+                producto.cost_price = float(nuevo_costo)
+                cambios['costo'] = float(producto.cost_price)
+            except Exception:
+                pass
+        if nuevo_min is not None:
+            try:
+                producto.min_stock_level = int(nuevo_min)
+                cambios['min_stock'] = producto.min_stock_level
+            except Exception:
+                pass
+        if nuevo_max is not None:
+            try:
+                producto.max_stock_level = int(nuevo_max)
+                cambios['max_stock'] = producto.max_stock_level
+            except Exception:
+                pass
+        
+        producto.save()
+        
+        return JsonResponse({
+            'success': True,
+            'respuesta': f"✅ **PRODUCTO ACTUALIZADO**\n\n**{producto.name}**\nCambios: {cambios}",
+            'accion': 'actualizar',
+            'datos': {'producto': {'id': producto.id, 'name': producto.name, **cambios}}
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al actualizar producto: {str(e)}'
+        })
+
+def flujo_registrar_venta(action_data):
+    """Muestra formulario para registrar una venta (producto del inventario)."""
+    from inventario.models import Product
+    opciones = [
+        {'valor': p.id, 'texto': f"{p.name} (stock: {p.quantity})"}
+        for p in Product.objects.all().order_by('name')
+    ]
+    return {
+        'mensaje': "🧾 **REGISTRAR VENTA**\n\nCompleta los datos de la venta:",
+        'datos': {
+            'tipo': 'formulario',
+            'accion': 'registrar_venta',
+            'campos': {
+                'producto': {
+                    'label': 'Producto del inventario',
+                    'valor': '',
+                    'requerido': True,
+                    'tipo': 'select',
+                    'opciones': opciones
+                },
+                'cantidad': {
+                    'label': 'Cantidad vendida',
+                    'valor': action_data.get('quantity') or '',
+                    'requerido': True,
+                    'tipo': 'number',
+                    'placeholder': 'Ej: 2'
+                },
+                'precio_unitario': {
+                    'label': 'Precio unitario (USD)',
+                    'valor': action_data.get('unit_price') or '',
+                    'requerido': False,
+                    'tipo': 'number',
+                    'placeholder': 'Ej: 49.99'
+                },
+                'cliente': {
+                    'label': 'Cliente (opcional)',
+                    'valor': '',
+                    'requerido': False,
+                    'placeholder': 'Nombre del cliente'
+                }
+            }
+        }
+    }
+
+def procesar_registrar_venta(campos):
+    """Procesa el formulario de registrar venta"""
+    try:
+        from inventario.models import Product, Sale
+        # Puede venir ID desde el select
+        producto = None
+        prod_raw = campos.get('producto')
+        if prod_raw is not None and str(prod_raw).strip() != '':
+            try:
+                producto = Product.objects.filter(id=int(prod_raw)).first()
+            except Exception:
+                producto = None
+        # Fallback por nombre si no llegó un ID válido
+        if not producto:
+            nombre = (str(prod_raw) if prod_raw is not None else '').strip()
+            if not nombre:
+                return JsonResponse({'success': False, 'error': 'Debes seleccionar un producto'})
+            producto = Product.objects.filter(name__icontains=nombre).first()
+        if not producto:
+            return JsonResponse({'success': False, 'error': 'Producto no encontrado'})
+
+        # Cantidad
+        try:
+            cantidad = int(float((campos.get('cantidad') or '1').strip()))
+            if cantidad <= 0:
+                cantidad = 1
+        except Exception:
+            cantidad = 1
+        # Precio unitario: usar el del producto si no se envía
+        try:
+            precio_unit = float((campos.get('precio_unitario') or '0').strip())
+        except Exception:
+            precio_unit = 0
+        if precio_unit <= 0:
+            precio_unit = float(producto.selling_price or 0)
+
+        # Verificar stock suficiente
+        if producto.quantity is not None and cantidad > max(0, int(producto.quantity)):
+            return JsonResponse({'success': False, 'error': f"Stock insuficiente. Disponible: {producto.quantity}"})
+
+        # Crear venta
+        venta = Sale.objects.create(
+            product=producto,
+            quantity_sold=cantidad,
+            unit_price=precio_unit,
+            customer_name=(campos.get('cliente') or '').strip()
+        )
+
+        return JsonResponse({
+            'success': True,
+            'respuesta': f"✅ Venta registrada: {producto.name} x{cantidad} a ${precio_unit:.2f} (Total ${float(venta.total_amount):.2f})",
+            'accion': 'registrar_venta',
+            'datos': {'venta_id': venta.id}
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Error al registrar venta: {str(e)}'})

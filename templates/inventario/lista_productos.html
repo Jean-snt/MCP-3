@@ -70,6 +70,10 @@
                         {% endif %}
                     </div>
                     
+                    <div class="mb-2">
+                        <span class="badge bg-primary"><i class="fas fa-tag me-1"></i> ${{ producto.selling_price|floatformat:2 }}</span>
+                    </div>
+
                     {% if producto.description %}
                         <p class="card-text text-muted">{{ producto.description }}</p>
                     {% else %}
