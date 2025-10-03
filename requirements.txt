@@ -1,0 +1,27 @@
+# Django y REST Framework
+Django>=4.2,<5.0
+djangorestframework>=3.14,<4.0
+
+# Base de datos y utilidades
+pytz
+sqlparse
+
+# Ciencia de datos / IA
+pandas>=2.1
+numpy>=1.26
+scikit-learn>=1.3
+statsmodels>=0.14  # opcional si quieres análisis estadístico avanzado
+
+# Dashboard y visualización
+plotly>=6.0
+dash>=3.0
+
+# Requests para interacción con APIs (CLI o dashboard)
+requests>=2.32
+
+# Desarrollo y utilidades
+python-dotenv>=1.1  # opcional para variables de entorno
+
+# --- Google Cloud Vertex AI ---
+google-cloud-aiplatform==1.71.1
+
