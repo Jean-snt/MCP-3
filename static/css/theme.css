@@ -1,0 +1,9 @@
+body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+.navbar { background: #6f42c1; }
+.navbar-brand, .nav-link, .navbar-brand:hover, .nav-link:hover { color: #fff; }
+.card { border: none; border-radius: 14px; box-shadow: 0 10px 24px rgba(0,0,0,0.08); }
+.btn-primary { background: #6f42c1; border-color: #6f42c1; }
+.btn-outline-primary { color: #6f42c1; border-color: #6f42c1; }
+.btn-outline-primary:hover { background: #6f42c1; color: #fff; }
+.badge-stock { background: #20c997; }
+.badge-out { background: #dc3545; }

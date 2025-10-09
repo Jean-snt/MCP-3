@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Productos - Inventario{% endblock %}
+{% block content %}
+<div class="row g-4">
+  {% for p in productos %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card p-3 h-100">
+      <div class="d-flex justify-content-between align-items-start">
+        <h5 class="card-title mb-2">{{ p.nombre }}</h5>
+        {% if p.cantidad > 0 %}
+          <span class="badge badge-stock">{{ p.cantidad }} en stock</span>
+        {% else %}
+          <span class="badge badge-out">Agotado</span>
+        {% endif %}
+      </div>
+      <p class="card-text text-muted">{{ p.descripcion|default:"Sin descripción" }}</p>
+      <div class="mt-auto d-flex gap-2">
+        <a class="btn btn-sm btn-outline-primary" href="/{{ p.id }}/editar/">Editar</a>
+        <a class="btn btn-sm btn-outline-danger" href="/{{ p.id }}/eliminar/">Eliminar</a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="alert alert-info">No hay productos. Crea uno nuevo.</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
