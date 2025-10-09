@@ -1,87 +1,324 @@
-🚀 Ejercicio #3: Inventario Inteligente Colaborativo con Predicción y Análisis de Tendencias
+# 🤖 Inventario Inteligente Colaborativo con Predicción y Análisis de Tendencias
 
-Este proyecto expande el sistema de inventario backend de Python y Django del Ejercicio #2, elevándolo a un nivel intermedio–avanzado.
-El objetivo es desarrollar una plataforma más robusta y colaborativa, añadiendo funcionalidades de predicción de demanda, análisis de tendencias y una interfaz interactiva para la visualización de datos.
+Un sistema avanzado de gestión de inventario que utiliza Inteligencia Artificial para predecir demanda, analizar tendencias y sugerir acciones de reabastecimiento optimizadas.
 
-📋 Desafío
+## ✨ Características Principales
 
-Desarrollar un sistema de inventario inteligente que no solo gestione el catálogo de productos, sino que también utilice Inteligencia Artificial para:
+- **Gestión Completa de Inventario**: CRUD completo para productos, proveedores y ventas
+- **API RESTful**: Endpoints para integración con aplicaciones externas
+- **Predicción de Demanda con IA**: Modelos de Machine Learning para prever demanda futura
+- **Análisis de Tendencias**: Identificación de patrones de venta y rotación de productos
+- **Sugerencias Inteligentes**: IA que propone cuándo y cuánto reabastecer
+- **Dashboard Interactivo**: Visualización en tiempo real de métricas clave
+- **CLI Avanzado**: Interfaz de línea de comandos con análisis de IA
 
-Predecir la demanda.
+## 🛠️ Tecnologías Utilizadas
 
-Sugerir acciones de reabastecimiento.
+- **Backend**: Python 3.x, Django 5.0.6
+- **Base de Datos**: SQLite (configurable para PostgreSQL/MySQL)
+- **API**: Django REST Framework
+- **IA/ML**: Pandas, NumPy, Scikit-learn
+- **Visualización**: Plotly Dash, Matplotlib, Seaborn
+- **IA Generativa**: Google Gemini AI
 
-Proveer acceso mediante una API RESTful y un panel de control interactivo.
+## 📋 Requisitos del Sistema
 
-✨ Características Principales
+- Python 3.8+
+- pip (gestor de paquetes de Python)
+- Git (opcional, para clonar el repositorio)
 
-Gestión de Inventario
-CRUD completo de productos y proveedores.
+## 🚀 Instalación y Configuración
 
-Historial de Ventas
-Registro detallado de cada venta para análisis y predicción.
+### 1. Clonar el Repositorio
+```bash
+git clone <repository-url>
+cd joelpc03/MCP-3
+```
 
-API RESTful
-Puntos finales para interactuar con el sistema desde aplicaciones externas.
+### 2. Crear Entorno Virtual
+```bash
+python -m venv venv
+# En Windows:
+venv\Scripts\activate
+# En Linux/Mac:
+source venv/bin/activate
+```
 
-Predicción de Demanda (IA)
-Modelos de Machine Learning para prever la demanda futura de productos.
+### 3. Instalar Dependencias
+```bash
+pip install -r requirements.txt
+```
 
-Análisis de Tendencias
-Identificación de productos con alta/baja rotación y patrones de venta.
+### 4. Configurar Variables de Entorno
+Crear un archivo `.env` en la raíz del proyecto:
+```env
+DJANGO_SECRET_KEY=tu-clave-secreta-aqui
+GEMINI_API_KEY=tu-api-key-de-google-gemini
+```
 
-Sugerencias de Reabastecimiento
-La IA propone cuándo y cuánto reabastecer para optimizar el stock.
+### 5. Configurar Base de Datos
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
 
-Panel de Control
-Interfaz web interactiva para visualizar métricas clave del inventario.
+### 6. Crear Datos de Ejemplo
+```bash
+python seed_data.py
+```
 
-Interfaz de Línea de Comandos (CLI)
-Script para interactuar directamente con el sistema y la IA desde la terminal.
+### 7. Crear Superusuario (Opcional)
+```bash
+python manage.py createsuperuser
+```
 
-🎯 Entregables y Resultado Esperado
+## 🎯 Uso del Sistema
 
-El proyecto consta de los siguientes componentes principales:
+### Servidor Django (Backend + API)
+```bash
+python manage.py runserver
+```
+- **Admin Panel**: http://localhost:8000/admin/
+- **API**: http://localhost:8000/api/
 
-Proyecto Django Completo (smart_inventory_project/)
+### Dashboard Interactivo
+```bash
+python dashboard_app.py
+```
+- **Dashboard**: http://localhost:8050
 
-Modelos de datos para productos, proveedores y ventas.
+### CLI Inteligente
+```bash
+# Modo básico
+python consultar_inventario.py
 
-API RESTful para todas las operaciones de inventario.
+# Modo interactivo
+python consultar_inventario.py --interactive
+```
 
-Lógica de IA integrada para predicción y análisis.
+## 📊 API Endpoints
 
-Script de Interacción CLI (consultar_inventario.py)
+### Productos
+- `GET /api/productos/` - Listar productos
+- `POST /api/productos/` - Crear producto
+- `GET /api/productos/{id}/` - Obtener producto
+- `PUT /api/productos/{id}/` - Actualizar producto
+- `DELETE /api/productos/{id}/` - Eliminar producto
+- `GET /api/productos/bajo_stock/` - Productos bajo stock
+- `POST /api/productos/{id}/registrar_venta/` - Registrar venta
+- `POST /api/productos/{id}/ajustar_stock/` - Ajustar stock
 
-Permite consultar el estado del inventario, realizar predicciones y obtener sugerencias de la IA desde la terminal.
+### Análisis
+- `GET /api/analisis/dashboard/` - Datos del dashboard
+- `GET /api/analisis/prediccion_demanda/` - Predicción de demanda
+- `GET /api/analisis/tendencias/` - Análisis de tendencias
+- `GET /api/analisis/sugerencias_reabastecimiento/` - Sugerencias IA
 
-Aplicación Dashboard Interactivo (dashboard_app.py)
+## 🤖 Funcionalidades de IA
 
-Aplicación web separada construida con Dash/Plotly para visualizar métricas en tiempo real.
+### Predicción de Demanda
+- Utiliza regresión lineal para predecir ventas futuras
+- Analiza patrones históricos de 90 días
+- Calcula nivel de confianza basado en variabilidad de datos
 
-🛠️ Tecnologías Utilizadas
+### Análisis de Tendencias
+- Identifica productos con alta/baja rotación
+- Analiza patrones por categoría y día de la semana
+- Detecta estacionalidad en las ventas
 
-Backend: Python 3.x, Django
+### Sugerencias de Reabastecimiento
+- Calcula demanda diaria promedio
+- Estima días restantes de stock
+- Sugiere cantidades óptimas de reabastecimiento
+- Clasifica urgencia (CRÍTICA, ALTA, MEDIA)
 
-Base de Datos: SQLite (por defecto, configurable para PostgreSQL/MySQL)
+## 📈 Dashboard Interactivo
 
-API: Django REST Framework
+El dashboard incluye:
+- **Métricas Principales**: Total productos, bajo stock, ventas, ingresos
+- **Gráficos de Ventas**: Tendencias diarias y productos populares
+- **Análisis de Tendencias**: Patrones por día de la semana
+- **Tabla de Sugerencias**: Reabastecimiento inteligente con colores de urgencia
+- **Actualización Automática**: Datos en tiempo real cada 30 segundos
 
-IA / Machine Learning:
+## 💻 CLI Avanzado
 
-Pandas
+### Modo Interactivo
+```bash
+python consultar_inventario.py --interactive
+```
 
-NumPy
+Opciones disponibles:
+1. **Consultar inventario básico** - Lista productos disponibles
+2. **Análisis de tendencias** - Productos con mayor/menor rotación
+3. **Predicción de demanda** - Análisis específico por producto
+4. **Sugerencias de reabastecimiento** - Recomendaciones IA
+5. **Dashboard ejecutivo** - Resumen estadístico completo
 
-Scikit-learn (para regresión lineal básica)
+### Ejemplos de Uso
 
-Statsmodels / Prophet (opcional, para series de tiempo más avanzadas)
+#### Consulta Básica
+```bash
+python consultar_inventario.py
+```
 
-Visualización / Dashboard: Plotly Dash
+#### Análisis de Producto Específico
+```bash
+python consultar_inventario.py --interactive
+# Seleccionar opción 3 y proporcionar ID del producto
+```
 
-Interacción con API: requests (para el CLI y Dashboard)
+## 🔧 Configuración Avanzada
 
-📂 Estructura del Proyecto
------------------------------------------
-<img width="560" height="424" alt="image" src="https://github.com/user-attachments/assets/9261f789-dbbd-4c24-ac88-04689eff955a" />
+### Base de Datos PostgreSQL
+```python
+# settings.py
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'inventario_db',
+        'USER': 'tu_usuario',
+        'PASSWORD': 'tu_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+```
 
+### Configuración de Producción
+```python
+# settings.py
+DEBUG = False
+ALLOWED_HOSTS = ['tu-dominio.com']
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = ['https://tu-dominio.com']
+```
+
+## 📊 Modelos de Datos
+
+### Producto
+- Información básica (nombre, descripción, categoría)
+- Gestión de stock (cantidad, cantidad mínima)
+- Precios (compra, venta, margen de ganancia)
+- Relación con proveedor
+- Código de barras y ubicación
+
+### Venta
+- Registro de transacciones
+- Cantidad vendida y precio unitario
+- Información del cliente
+- Fecha y notas
+
+### MovimientoInventario
+- Historial de entradas y salidas
+- Tipos de movimiento (entrada, salida, ajuste)
+- Motivo y usuario responsable
+
+## 🧪 Testing y Desarrollo
+
+### Ejecutar Tests
+```bash
+python manage.py test
+```
+
+### Crear Datos de Prueba
+```bash
+python seed_data.py
+```
+
+### Acceder al Admin
+```bash
+python manage.py runserver
+# Ir a http://localhost:8000/admin/
+```
+
+## 📚 Documentación de la API
+
+### Autenticación
+Actualmente el sistema no requiere autenticación para desarrollo. Para producción, implementar:
+- JWT tokens
+- API keys
+- OAuth2
+
+### Formato de Respuesta
+```json
+{
+    "count": 25,
+    "next": "http://localhost:8000/api/productos/?page=2",
+    "previous": null,
+    "results": [...]
+}
+```
+
+### Códigos de Estado
+- `200` - OK
+- `201` - Creado
+- `400` - Bad Request
+- `404` - No encontrado
+- `500` - Error interno
+
+## 🚨 Solución de Problemas
+
+### Error de Conexión a la API
+```bash
+# Verificar que Django esté ejecutándose
+python manage.py runserver
+
+# Verificar puerto
+curl http://localhost:8000/api/
+```
+
+### Error de Gemini AI
+```bash
+# Verificar API key en .env
+echo $GEMINI_API_KEY
+
+# Verificar conexión
+python -c "import google.generativeai as genai; print('OK')"
+```
+
+### Error de Dashboard
+```bash
+# Verificar dependencias
+pip install dash plotly
+
+# Verificar puerto 8050
+netstat -an | grep 8050
+```
+
+## 🤝 Contribución
+
+1. Fork el proyecto
+2. Crear rama para feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit cambios (`git commit -am 'Agregar nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Crear Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
+
+## 👥 Autores
+
+- **Desarrollador Principal**: [Tu Nombre]
+- **IA/ML**: Google Gemini AI
+- **Framework**: Django REST Framework
+- **Visualización**: Plotly Dash
+
+## 🙏 Agradecimientos
+
+- Django Community
+- Google Gemini AI
+- Plotly Team
+- Scikit-learn Contributors
+
+---
+
+## 📞 Soporte
+
+Para soporte técnico o preguntas:
+- 📧 Email: soporte@inventario-inteligente.com
+- 📱 Teléfono: +1-555-INVENTARIO
+- 🌐 Web: https://inventario-inteligente.com
+
+**¡Gracias por usar Inventario Inteligente! 🚀**
