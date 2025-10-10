@@ -1,0 +1,43 @@
+{% extends 'inventory/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>💰 Historial de Ventas</h1>
+    <a href="{% url 'sale_create' %}" class="btn btn-success">+ Registrar Venta</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if sales %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio Unitario</th>
+                    <th>Total</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                <tr>
+                    <td>{{ sale.product.name }}</td>
+                    <td>{{ sale.quantity_sold }}</td>
+                    <td>${{ sale.sale_price }}</td>
+                    <td>${{ sale.total_revenue }}</td>
+                    <td>{{ sale.sale_date|date:"d/m/Y H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4">
+            <h4>📭 No hay ventas registradas</h4>
+            <p>Registra tu primera venta para comenzar el análisis.</p>
+            <a href="{% url 'sale_create' %}" class="btn btn-success">+ Registrar Primera Venta</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

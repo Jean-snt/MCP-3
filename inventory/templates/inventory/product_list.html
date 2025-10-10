@@ -1,0 +1,77 @@
+{% extends 'inventory/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>📦 Gestión de Productos</h1>
+    <div>
+        <a href="{% url 'product_create' %}" class="btn btn-success">+ Nuevo Producto</a>
+        <a href="{% url 'ai_analysis' %}" class="btn btn-info">🤖 Consultar IA</a>
+    </div>
+</div>
+
+<!-- Resumen -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body text-center">
+                <h5 class="card-title">{{ products.count }}</h5>
+                <p class="card-text">Total Productos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body text-center">
+                <h5 class="card-title">{{ low_stock_count }}</h5>
+                <p class="card-text">Stock Bajo</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de productos -->
+<div class="card">
+    <div class="card-body">
+        {% if products %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Categoría</th>
+                    <th>Stock</th>
+                    <th>Precio Venta</th>
+                    <th>Proveedor</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr class="{% if product.needs_restock %}low-stock{% endif %}">
+                    <td>
+                        <strong>{{ product.name }}</strong>
+                        {% if product.needs_restock %}
+                        <span class="badge bg-danger">BAJO STOCK</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ product.category }}</td>
+                    <td>{{ product.quantity }}</td>
+                    <td>${{ product.selling_price }}</td>
+                    <td>{{ product.supplier.name }}</td>
+                    <td>
+                        <a href="{% url 'product_update' product.pk %}" class="btn btn-sm btn-warning">✏️ Editar</a>
+                        <a href="{% url 'product_delete' product.pk %}" class="btn btn-sm btn-danger">🗑️ Eliminar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4">
+            <h4>📭 No hay productos registrados</h4>
+            <p>Comienza agregando tu primer producto al inventario.</p>
+            <a href="{% url 'product_create' %}" class="btn btn-success">+ Agregar Primer Producto</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

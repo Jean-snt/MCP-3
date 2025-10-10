@@ -1,0 +1,50 @@
+{% extends 'inventory/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h2>🤖 Análisis de Inteligencia Artificial</h2>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h3>{{ total_products }}</h3>
+                                <p>Productos Registrados</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h3>{{ total_sales }}</h3>
+                                <p>Ventas Registradas</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if suggestions.error %}
+                <div class="alert alert-danger">
+                    <h4>❌ Error en el análisis</h4>
+                    <p>{{ suggestions.error }}</p>
+                </div>
+                {% else %}
+                <div class="alert alert-success">
+                    <h4>💡 Sugerencias Inteligentes</h4>
+                    <p>{{ suggestions.suggestions|linebreaks }}</p>
+                </div>
+                {% endif %}
+
+                <div class="text-center mt-4">
+                    <a href="{% url 'sale_list' %}" class="btn btn-primary">📊 Registrar más ventas</a>
+                    <a href="{% url 'product_list' %}" class="btn btn-secondary">📦 Gestionar productos</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
