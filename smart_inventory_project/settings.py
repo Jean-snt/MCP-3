@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'inventory',
+    'core', 
 
 ]
 
@@ -125,3 +126,10 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Configuración de IA
+GOOGLE_CLOUD_PROJECT = "stone-poetry-473315-a9"
+VERTEX_AI_LOCATION = "us-central1"
+MODELO_IA_PRINCIPAL = "gemini-2.5-flash"
+
+
