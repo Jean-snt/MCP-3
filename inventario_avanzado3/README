@@ -1,0 +1,8 @@
+
+ejecuta el backend:
+venv\Scripts\activate
+python manage.py runserver
+
+Ejecuta el dashboard 
+venv\Scripts\activate
+python dashboard_app.py
