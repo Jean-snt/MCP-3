@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% block title %}Productos - StockMaster Pro{% endblock %}
+{% block content %}
+<div class="fade-in-up">
+  <!-- Header de la página -->
+  <div class="page-header mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h2 class="text-gradient mb-2">
+          <i class="fas fa-boxes me-2"></i>
+          Gestión de Productos
+        </h2>
+        <p class="text-muted mb-0">Administra tu inventario de manera inteligente</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <a href="{% url 'productos:crear' %}" class="btn btn-primary btn-modern">
+          <i class="fas fa-plus"></i>
+          Agregar Producto
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estadísticas rápidas -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card stats-card">
+        <div class="card-body text-center">
+          <i class="fas fa-boxes stats-icon text-primary"></i>
+          <h3 class="stats-number">{{ productos|length }}</h3>
+          <p class="stats-label">Total Productos</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card">
+        <div class="card-body text-center">
+          <i class="fas fa-check-circle stats-icon text-success"></i>
+          <h3 class="stats-number">{{ productos|length }}</h3>
+          <p class="stats-label">En Stock</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card">
+        <div class="card-body text-center">
+          <i class="fas fa-exclamation-triangle stats-icon text-warning"></i>
+          <h3 class="stats-number">0</h3>
+          <p class="stats-label">Bajo Stock</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card">
+        <div class="card-body text-center">
+          <i class="fas fa-times-circle stats-icon text-danger"></i>
+          <h3 class="stats-number">0</h3>
+          <p class="stats-label">Agotados</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lista de productos -->
+  <div class="card">
+    <div class="card-header">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h5 class="mb-0">
+            <i class="fas fa-list me-2"></i>
+            Inventario Actual
+          </h5>
+        </div>
+        <div class="col-md-6">
+          <div class="d-flex gap-2 justify-content-end">
+            <button class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-filter"></i>
+              Filtrar
+            </button>
+            <button class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-download"></i>
+              Exportar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      {% if productos %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Stock</th>
+                <th>Precio</th>
+                <th>Proveedor</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in productos %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="product-avatar me-3">
+                      <i class="fas fa-box"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-0">{{ p.nombre }}</h6>
+                      <small class="text-muted">{{ p.descripcion|default:"Sin descripción"|truncatechars:50 }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark">{{ p.categoria|default:"General" }}</span>
+                </td>
+                <td>
+                  {% if p.cantidad > p.cantidad_minima %}
+                    <span class="badge badge-stock">{{ p.cantidad }} unidades</span>
+                  {% elif p.cantidad > 0 %}
+                    <span class="badge badge-warning">{{ p.cantidad }} unidades</span>
+                  {% else %}
+                    <span class="badge badge-out">Agotado</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <strong>${{ p.precio_venta|floatformat:2 }}</strong>
+                </td>
+                <td>
+                  <span class="text-muted">{{ p.proveedor.nombre|default:"Sin proveedor" }}</span>
+                </td>
+                <td>
+                  <div class="btn-group" role="group">
+                    <a href="/{{ p.id }}/editar/" class="btn btn-sm btn-outline-primary" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="/{{ p.id }}/eliminar/" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                      <i class="fas fa-trash"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state text-center py-5">
+          <i class="fas fa-boxes empty-icon"></i>
+          <h4 class="mt-3 mb-2">No hay productos registrados</h4>
+          <p class="text-muted mb-4">Comienza agregando tu primer producto al inventario</p>
+          <a href="{% url 'productos:crear' %}" class="btn btn-primary btn-modern">
+            <i class="fas fa-plus"></i>
+            Agregar Primer Producto
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+.page-header {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.stats-card {
+  transition: var(--transition);
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+}
+
+.stats-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.stats-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.stats-number {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--dark-color);
+}
+
+.stats-label {
+  color: var(--gray-600);
+  font-weight: 500;
+  margin: 0;
+}
+
+.product-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1rem;
+}
+
+.empty-state {
+  padding: 3rem 2rem;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  color: var(--gray-300);
+  margin-bottom: 1rem;
+}
+
+.btn-group .btn {
+  border-radius: 6px;
+  margin: 0 2px;
+}
+
+.btn-group .btn:hover {
+  transform: translateY(-2px);
+}
+</style>
+{% endblock %}

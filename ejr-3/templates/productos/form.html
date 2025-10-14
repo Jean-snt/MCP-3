@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+{% block title %}{{ view.object|default:'Nuevo' }} Producto - StockMaster Pro{% endblock %}
+{% block content %}
+<div class="fade-in-up">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-8">
+      <!-- Header del formulario -->
+      <div class="page-header mb-4">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <h2 class="text-gradient mb-2">
+              <i class="fas fa-{% if view.object %}edit{% else %}plus{% endif %} me-2"></i>
+              {% if view.object %}Editar Producto{% else %}Nuevo Producto{% endif %}
+            </h2>
+            <p class="text-muted mb-0">
+              {% if view.object %}
+                Modifica la información del producto seleccionado
+              {% else %}
+                Agrega un nuevo producto a tu inventario
+              {% endif %}
+            </p>
+          </div>
+          <div class="col-md-4 text-end">
+            <a href="{% url 'productos:lista' %}" class="btn btn-outline-light btn-modern">
+              <i class="fas fa-arrow-left"></i>
+              Volver
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulario -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i>
+            Información del Producto
+          </h5>
+        </div>
+        <div class="card-body">
+          <form method="post" class="needs-validation" novalidate>
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            
+            <div class="row">
+              <!-- Información básica -->
+              <div class="col-md-6">
+                <div class="form-group mb-4">
+                  <label class="form-label">
+                    <i class="fas fa-tag me-1"></i>
+                    Nombre del Producto *
+                  </label>
+                  {{ form.nombre }}
+                  {% if form.nombre.errors %}
+                    <div class="invalid-feedback d-block">
+                      {{ form.nombre.errors.0 }}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="form-group mb-4">
+                  <label class="form-label">
+                    <i class="fas fa-th-large me-1"></i>
+                    Categoría
+                  </label>
+                  {{ form.categoria }}
+                  {% if form.categoria.errors %}
+                    <div class="invalid-feedback d-block">
+                      {{ form.categoria.errors.0 }}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group mb-4">
+              <label class="form-label">
+                <i class="fas fa-align-left me-1"></i>
+                Descripción
+              </label>
+              {{ form.descripcion }}
+              {% if form.descripcion.errors %}
+                <div class="invalid-feedback d-block">
+                  {{ form.descripcion.errors.0 }}
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="row">
+              <!-- Stock -->
+              <div class="col-md-4">
+                <div class="form-group mb-4">
+                  <label class="form-label">
+                    <i class="fas fa-boxes me-1"></i>
+                    Cantidad en Stock *
+                  </label>
+                  {{ form.cantidad }}
+                  {% if form.cantidad.errors %}
+                    <div class="invalid-feedback d-block">
+                      {{ form.cantidad.errors.0 }}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="col-md-4">
+                <div class="form-group mb-4">
+                  <label class="form-label">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Stock Mínimo
+                  </label>
+                  {{ form.cantidad_minima }}
+                  {% if form.cantidad_minima.errors %}
+                    <div class="invalid-feedback d-block">
+                      {{ form.cantidad_minima.errors.0 }}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="col-md-4">
+                <div class="form-group mb-4">
+                  <label class="form-label">
+                    <i class="fas fa-map-marker-alt me-1"></i>
+                    Ubicación
+                  </label>
+                  {{ form.ubicacion }}
+                  {% if form.ubicacion.errors %}
+                    <div class="invalid-feedback d-block">
+                      {{ form.ubicacion.errors.0 }}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <!-- Precios -->
+              <div class="col-md-6">
+                <div class="form-group mb-4">
+                  <label class="form-label">
+                    <i class="fas fa-dollar-sign me-1"></i>
+                    Precio de Compra
+                  </label>
+                  {{ form.precio_compra }}
+                  {% if form.precio_compra.errors %}
+                    <div class="invalid-feedback d-block">
+                      {{ form.precio_compra.errors.0 }}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="form-group mb-4">
+                  <label class="form-label">
+                    <i class="fas fa-tags me-1"></i>
+                    Precio de Venta *
+                  </label>
+                  {{ form.precio_venta }}
+                  {% if form.precio_venta.errors %}
+                    <div class="invalid-feedback d-block">
+                      {{ form.precio_venta.errors.0 }}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <!-- Información adicional -->
+              <div class="col-md-6">
+                <div class="form-group mb-4">
+                  <label class="form-label">
+                    <i class="fas fa-truck me-1"></i>
+                    Proveedor
+                  </label>
+                  {{ form.proveedor }}
+                  {% if form.proveedor.errors %}
+                    <div class="invalid-feedback d-block">
+                      {{ form.proveedor.errors.0 }}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="form-group mb-4">
+                  <label class="form-label">
+                    <i class="fas fa-barcode me-1"></i>
+                    Código de Barras
+                  </label>
+                  {{ form.codigo_barras }}
+                  {% if form.codigo_barras.errors %}
+                    <div class="invalid-feedback d-block">
+                      {{ form.codigo_barras.errors.0 }}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="form-actions mt-4 pt-4 border-top">
+              <div class="row">
+                <div class="col-md-6">
+                  <button type="submit" class="btn btn-primary btn-modern w-100">
+                    <i class="fas fa-save me-2"></i>
+                    {% if view.object %}Actualizar Producto{% else %}Crear Producto{% endif %}
+                  </button>
+                </div>
+                <div class="col-md-6">
+                  <a href="{% url 'productos:lista' %}" class="btn btn-outline-secondary btn-modern w-100">
+                    <i class="fas fa-times me-2"></i>
+                    Cancelar
+                  </a>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.form-group {
+  position: relative;
+}
+
+.form-label {
+  font-weight: 600;
+  color: var(--dark-color);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+}
+
+.form-label i {
+  color: var(--primary-color);
+  width: 16px;
+}
+
+.form-control {
+  border: 2px solid var(--gray-200);
+  border-radius: var(--border-radius);
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  transition: var(--transition);
+  background: white;
+}
+
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  outline: none;
+}
+
+.form-control.is-invalid {
+  border-color: var(--danger-color);
+}
+
+.invalid-feedback {
+  color: var(--danger-color);
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.form-actions {
+  background: var(--gray-100);
+  margin: 0 -1.5rem -1.5rem -1.5rem;
+  padding: 1.5rem;
+}
+
+.needs-validation .form-control:invalid {
+  border-color: var(--danger-color);
+}
+
+.needs-validation .form-control:valid {
+  border-color: var(--success-color);
+}
+
+.page-header {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+</style>
+
+<script>
+// Validación del formulario
+(function() {
+  'use strict';
+  window.addEventListener('load', function() {
+    var forms = document.getElementsByClassName('needs-validation');
+    var validation = Array.prototype.filter.call(forms, function(form) {
+      form.addEventListener('submit', function(event) {
+        if (form.checkValidity() === false) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  }, false);
+})();
+</script>
+{% endblock %}

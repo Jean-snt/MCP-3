@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% block title %}Eliminar Producto - StockMaster Pro{% endblock %}
+{% block content %}
+<div class="fade-in-up">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+      <!-- Header de confirmación -->
+      <div class="page-header mb-4 text-center">
+        <div class="warning-icon mb-3">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h2 class="text-gradient mb-2">Confirmar Eliminación</h2>
+        <p class="text-muted mb-0">Esta acción no se puede deshacer</p>
+      </div>
+
+      <!-- Card de confirmación -->
+      <div class="card">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-trash me-2"></i>
+            Eliminar Producto
+          </h5>
+        </div>
+        <div class="card-body">
+          <!-- Información del producto -->
+          <div class="product-info mb-4">
+            <div class="row align-items-center">
+              <div class="col-md-3">
+                <div class="product-avatar-large">
+                  <i class="fas fa-box"></i>
+                </div>
+              </div>
+              <div class="col-md-9">
+                <h4 class="product-name mb-2">{{ object.nombre }}</h4>
+                <p class="text-muted mb-2">{{ object.descripcion|default:"Sin descripción" }}</p>
+                <div class="product-details">
+                  <span class="badge bg-light text-dark me-2">
+                    <i class="fas fa-th-large me-1"></i>
+                    {{ object.categoria|default:"General" }}
+                  </span>
+                  <span class="badge bg-light text-dark me-2">
+                    <i class="fas fa-boxes me-1"></i>
+                    {{ object.cantidad }} unidades
+                  </span>
+                  <span class="badge bg-light text-dark">
+                    <i class="fas fa-dollar-sign me-1"></i>
+                    ${{ object.precio_venta|floatformat:2 }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Advertencia -->
+          <div class="alert alert-warning" role="alert">
+            <div class="d-flex align-items-start">
+              <i class="fas fa-exclamation-triangle me-3 mt-1"></i>
+              <div>
+                <h6 class="alert-heading mb-2">¡Atención!</h6>
+                <p class="mb-2">Estás a punto de eliminar permanentemente este producto del sistema.</p>
+                <ul class="mb-0">
+                  <li>Se eliminarán todos los datos asociados al producto</li>
+                  <li>Se perderá el historial de ventas relacionado</li>
+                  <li>Esta acción no se puede deshacer</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulario de confirmación -->
+          <form method="post" class="confirmation-form">
+            {% csrf_token %}
+            <div class="form-check mb-4">
+              <input class="form-check-input" type="checkbox" id="confirmDelete" required>
+              <label class="form-check-label" for="confirmDelete">
+                <strong>Confirmo que deseo eliminar este producto permanentemente</strong>
+              </label>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="form-actions">
+              <div class="row">
+                <div class="col-md-6">
+                  <button type="submit" class="btn btn-danger btn-modern w-100" id="deleteBtn" disabled>
+                    <i class="fas fa-trash me-2"></i>
+                    Eliminar Producto
+                  </button>
+                </div>
+                <div class="col-md-6">
+                  <a href="{% url 'productos:lista' %}" class="btn btn-outline-secondary btn-modern w-100">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Cancelar
+                  </a>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.page-header {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.warning-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, var(--warning-color), #d97706);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  font-size: 2rem;
+  color: white;
+  box-shadow: var(--shadow-lg);
+}
+
+.product-info {
+  background: var(--gray-100);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+}
+
+.product-avatar-large {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2rem;
+  box-shadow: var(--shadow-md);
+}
+
+.product-name {
+  color: var(--dark-color);
+  font-weight: 600;
+}
+
+.product-details .badge {
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.alert {
+  border: none;
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--warning-color);
+}
+
+.alert-heading {
+  color: var(--warning-color);
+  font-weight: 600;
+}
+
+.form-check-input:checked {
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+}
+
+.form-check-label {
+  color: var(--dark-color);
+  font-weight: 500;
+}
+
+.form-actions {
+  background: var(--gray-100);
+  margin: 0 -1.5rem -1.5rem -1.5rem;
+  padding: 1.5rem;
+}
+
+.btn-danger.btn-modern {
+  background: linear-gradient(135deg, var(--danger-color), #dc2626);
+  border: none;
+}
+
+.btn-danger.btn-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-danger.btn-modern:disabled {
+  background: var(--gray-300);
+  transform: none;
+  box-shadow: none;
+}
+
+.confirmation-form {
+  margin-top: 1rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const confirmCheckbox = document.getElementById('confirmDelete');
+  const deleteBtn = document.getElementById('deleteBtn');
+  
+  confirmCheckbox.addEventListener('change', function() {
+    deleteBtn.disabled = !this.checked;
+  });
+  
+  // Confirmación adicional antes de enviar
+  document.querySelector('.confirmation-form').addEventListener('submit', function(e) {
+    if (!confirm('¿Estás completamente seguro de que deseas eliminar este producto? Esta acción es irreversible.')) {
+      e.preventDefault();
+    }
+  });
+});
+</script>
+{% endblock %}

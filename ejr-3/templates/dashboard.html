@@ -1,0 +1,403 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - StockMaster Pro{% endblock %}
+{% block content %}
+<div class="fade-in-up">
+  <!-- Header del Dashboard -->
+  <div class="page-header mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h2 class="text-gradient mb-2">
+          <i class="fas fa-tachometer-alt me-2"></i>
+          Dashboard Principal
+        </h2>
+        <p class="text-muted mb-0">Resumen completo de tu sistema de inventario</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <div class="dashboard-actions">
+          <a href="{% url 'productos:crear' %}" class="btn btn-primary btn-modern me-2">
+            <i class="fas fa-plus"></i>
+            Nuevo Producto
+          </a>
+          <button class="btn btn-outline-light btn-modern" onclick="openDashboard()">
+            <i class="fas fa-chart-line"></i>
+            Analytics
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estadísticas principales -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card stats-card">
+        <div class="card-body text-center">
+          <i class="fas fa-boxes stats-icon text-primary"></i>
+          <h3 class="stats-number">{{ total_productos }}</h3>
+          <p class="stats-label">Total Productos</p>
+          <div class="stats-trend">
+            <i class="fas fa-arrow-up text-success"></i>
+            <span class="text-success">+12%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card">
+        <div class="card-body text-center">
+          <i class="fas fa-truck stats-icon text-info"></i>
+          <h3 class="stats-number">{{ total_proveedores }}</h3>
+          <p class="stats-label">Proveedores</p>
+          <div class="stats-trend">
+            <i class="fas fa-minus text-muted"></i>
+            <span class="text-muted">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card">
+        <div class="card-body text-center">
+          <i class="fas fa-shopping-cart stats-icon text-success"></i>
+          <h3 class="stats-number">{{ total_ventas }}</h3>
+          <p class="stats-label">Ventas Totales</p>
+          <div class="stats-trend">
+            <i class="fas fa-arrow-up text-success"></i>
+            <span class="text-success">+8%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card">
+        <div class="card-body text-center">
+          <i class="fas fa-exclamation-triangle stats-icon text-warning"></i>
+          <h3 class="stats-number">{{ productos_bajo_stock }}</h3>
+          <p class="stats-label">Bajo Stock</p>
+          <div class="stats-trend">
+            <i class="fas fa-arrow-down text-danger"></i>
+            <span class="text-danger">-3%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alertas y notificaciones -->
+  {% if productos_agotados > 0 or productos_bajo_stock > 0 %}
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card alert-card">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Alertas de Inventario
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            {% if productos_agotados > 0 %}
+            <div class="col-md-6">
+              <div class="alert-item">
+                <i class="fas fa-times-circle text-danger me-2"></i>
+                <strong>{{ productos_agotados }}</strong> productos agotados
+                <a href="{% url 'productos:lista' %}" class="btn btn-sm btn-outline-danger ms-2">Ver</a>
+              </div>
+            </div>
+            {% endif %}
+            {% if productos_bajo_stock > 0 %}
+            <div class="col-md-6">
+              <div class="alert-item">
+                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                <strong>{{ productos_bajo_stock }}</strong> productos con stock bajo
+                <a href="{% url 'productos:lista' %}" class="btn btn-sm btn-outline-warning ms-2">Ver</a>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Contenido principal del dashboard -->
+  <div class="row">
+    <!-- Productos recientes -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+              <i class="fas fa-clock me-2"></i>
+              Productos Recientes
+            </h5>
+            <a href="{% url 'productos:lista' %}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+          </div>
+        </div>
+        <div class="card-body">
+          {% if productos_recientes %}
+            <div class="recent-items">
+              {% for producto in productos_recientes %}
+              <div class="recent-item">
+                <div class="item-avatar">
+                  <i class="fas fa-box"></i>
+                </div>
+                <div class="item-info">
+                  <h6 class="item-title">{{ producto.nombre }}</h6>
+                  <p class="item-subtitle">{{ producto.categoria|default:"General" }}</p>
+                </div>
+                <div class="item-status">
+                  {% if producto.cantidad > producto.cantidad_minima %}
+                    <span class="badge badge-stock">{{ producto.cantidad }}</span>
+                  {% elif producto.cantidad > 0 %}
+                    <span class="badge badge-warning">{{ producto.cantidad }}</span>
+                  {% else %}
+                    <span class="badge badge-out">0</span>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-state text-center py-4">
+              <i class="fas fa-boxes empty-icon"></i>
+              <p class="text-muted mb-3">No hay productos registrados</p>
+              <a href="{% url 'productos:crear' %}" class="btn btn-primary btn-modern">
+                <i class="fas fa-plus"></i>
+                Agregar Primer Producto
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Ventas recientes -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+              <i class="fas fa-chart-line me-2"></i>
+              Ventas Recientes
+            </h5>
+            <a href="/api/ventas/" class="btn btn-sm btn-outline-primary">Ver todas</a>
+          </div>
+        </div>
+        <div class="card-body">
+          {% if ventas_recientes %}
+            <div class="recent-items">
+              {% for venta in ventas_recientes %}
+              <div class="recent-item">
+                <div class="item-avatar">
+                  <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="item-info">
+                  <h6 class="item-title">{{ venta.producto.nombre }}</h6>
+                  <p class="item-subtitle">{{ venta.fecha_venta|date:"d/m/Y" }} - {{ venta.cliente }}</p>
+                </div>
+                <div class="item-status">
+                  <span class="badge bg-success">${{ venta.precio_unitario|floatformat:2 }}</span>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-state text-center py-4">
+              <i class="fas fa-shopping-cart empty-icon"></i>
+              <p class="text-muted mb-3">No hay ventas registradas</p>
+              <p class="text-muted small">Las ventas aparecerán aquí cuando se registren</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Acciones rápidas -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-bolt me-2"></i>
+            Acciones Rápidas
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3">
+              <a href="{% url 'productos:crear' %}" class="quick-action-btn">
+                <i class="fas fa-plus"></i>
+                <span>Nuevo Producto</span>
+              </a>
+            </div>
+            <div class="col-md-3">
+              <a href="{% url 'productos:lista' %}" class="quick-action-btn">
+                <i class="fas fa-list"></i>
+                <span>Ver Inventario</span>
+              </a>
+            </div>
+            <div class="col-md-3">
+              <a href="/admin/" class="quick-action-btn">
+                <i class="fas fa-cog"></i>
+                <span>Panel Admin</span>
+              </a>
+            </div>
+            <div class="col-md-3">
+              <a href="#" class="quick-action-btn" onclick="openDashboard()">
+                <i class="fas fa-chart-bar"></i>
+                <span>Analytics</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.dashboard-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.stats-trend {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.alert-card {
+  border-left: 4px solid var(--warning-color);
+}
+
+.alert-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.alert-item:last-child {
+  border-bottom: none;
+}
+
+.recent-items {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--gray-200);
+  transition: var(--transition);
+}
+
+.recent-item:hover {
+  background: var(--gray-100);
+  margin: 0 -1rem;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+}
+
+.recent-item:last-child {
+  border-bottom: none;
+}
+
+.item-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1rem;
+  margin-right: 1rem;
+}
+
+.item-info {
+  flex: 1;
+}
+
+.item-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--dark-color);
+}
+
+.item-subtitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--gray-600);
+}
+
+.item-status {
+  margin-left: 1rem;
+}
+
+.quick-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  text-decoration: none;
+  color: var(--dark-color);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+  background: white;
+}
+
+.quick-action-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.quick-action-btn i {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--primary-color);
+}
+
+.quick-action-btn span {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  color: var(--gray-300);
+  margin-bottom: 1rem;
+}
+
+/* Scrollbar personalizado */
+.recent-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recent-items::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: 3px;
+}
+
+.recent-items::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 3px;
+}
+
+.recent-items::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+</style>
+{% endblock %}
+
